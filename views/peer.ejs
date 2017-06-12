@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>peer></title>
+  </head>
+  <body>
+	<video width="320" height="240" id="videobox" >
+	</video>
+	<p>you are a peer</p>
+  </body>
+</html>
+
+<script src="/javascripts/peer.js"></script>
+
+<script >
+
+  var host= <%- JSON.stringify(host) %>
+
+	var peer = new Peer({host: host, port: 9000, path: '/'});
+
+</script>

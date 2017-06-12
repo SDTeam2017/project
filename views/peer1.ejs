@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>peer1></title>
+  </head>
+  <body>
+	<video width="500" height="240" id="videobox" >
+	</video>
+	<p>you are connected to peer1</p>
+  </body>
+</html>
+
+<script src="/javascripts/peer.js"></script>
+
+<script >
+	console.log("inside peer1");
+
+  var host= <%- JSON.stringify(host) %>
+	var peer = new Peer('peer1', {host: host, port: 9000, path: '/'});
+
+var conn = peer.connect('peer2');
+console.log(conn)
+conn.on('open', function(){
+  conn.send('hi!');
+  console.log("data sent");
+});
+
+
+var constraints = { audio: false, video: true }; 
+
+navigator.mediaDevices.getUserMedia(constraints)
+.then(function(stream) {
+	peer.call('peer2', stream);
+})
+.catch(function(err) { console.log(err.name + ": " + err.message); }); // always check for errors at the end.
+</script>
