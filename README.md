@@ -9,3 +9,4 @@ To copy on computer:
 4. type in "npm install"
 5. in command prompt, navigate to inside bin folder
 6. to start server, type in "node server.js"
+7. in chrome browser, type in "https://*your ip address: port*" to access server. This will be written in cmd if server is running
