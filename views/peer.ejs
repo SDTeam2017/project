@@ -1,21 +1,66 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>peer></title>
+    <title>peer</title>
+        <link rel='stylesheet' href='/stylesheets/style.css'>
+
   </head>
   <body>
-	<video width="320" height="240" id="videobox" >
-	</video>
-	<p>you are a peer</p>
+    <h1 class="aliasname" id="alias_id"></h1>
+	  <video id="videobox" ></video>
+    <div class="aliaslist">
+      <h2 align="center">Alias List</h2>
+      <ul style="list-style-type:none; padding-left:0" id="alias_list">
+        <li>Coffee</li>
+      </ul> 
+    </div>
   </body>
 </html>
 
 <script src="/javascripts/peer.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 
 <script >
-
+  var peer_id, name, conn;
+  var name;
   var host= <%- JSON.stringify(host) %>
 
-	var peer = new Peer({host: host, port: 9000, path: '/'});
+	var peer = new Peer({host: host, port: 9000, path: '/', debug: 3});
+  var socket = io.connect();
+  peer.on('open', function(){
+
+     var exists=true;
+    // while(exists==true){
+        name = prompt("Please enter an Alias Name for this device:", peer.id);
+        if (name== null||/^\s/.test(name)==true||name=="") {
+          alert("Alias name cannot be blank or have spaces in front");
+        }
+        else
+        {
+          console.log("inside else statment");
+          
+                socket.emit('check_peer_name',name,function(result)
+                {
+                  exists=result;    //if result is true, then the name exists and loop runs again
+                });
+          console.log("exist value outside socket:"+exists);
+        }
+                  console.log("exist value outside else:"+exists);
+
+    // }
+
+     var obj={};
+     obj[name]=peer.id;
+     socket.emit('addnewpeer', obj);
+     document.getElementById("alias_id").innerHTML ="Alias Name: "+name;
+  
+  });
+  
+   //fix later to getusermedia.js for all devices to work
+  navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia ||    
+                         navigator.mediaDevices.webkitGetUserMedia ||
+                         navigator.mediaDevices.mozGetUserMedia;
+
+
 
 </script>
