@@ -56,35 +56,39 @@ peerServer.on('disconnect', function(id) {
     var index=client_list.indexOf(id);
     client_list.splice(index,1);
 });*/
+peerServer.on('connection', function(id) {
+    clients[id]={"peername":id};
+});
 
 io.sockets.on('connection', function (socket) {
   
-  socket.on('check_peer_name',function(name,fn){
-    console.log("inside check peer")
+  socket.on('check_peer_name',function(name){
     var exists=false;
     for (var key in clients)
     {
-      if(key==name)
+      console.log("key :"+clients[key]['peername'])
+      if(clients[key]['peername']==name)
       {
         exists=true;
         break;
       }
     }
-    fn(exists);
+    socket.emit('name_result',exists);
   });
 
- /* socket.on('addnewpeer', function (newpeer) {
+  socket.on('addnewpeer', function (newpeer) {
     for (var key in newpeer){
-      clients[key]={"socketid":socket.id,"peerid":newpeer[key]};
+      clients[key]={"socketid":socket.id,"peername":newpeer[key]};
     }
-    console.log(socket.id+" connected");
   });
-
-  socket.on('disconnect',function(data){
-      delete clients[key];
+  /*socket.on('disconnect',function(id){
+      delete clients[id];
       console.log(socket.id+" disconnected");
   });*/
 
+});
+  peerServer.on('disconnect', function(id) {
+   delete clients[id];
 });
 //var peerserver = peerhttps.createServer(options, peerapp).listen(9000);//require('http').createServer(peerapp);
 //peerapp.use('/', ExpressPeerServer(peerserver, options));
