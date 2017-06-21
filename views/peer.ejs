@@ -29,30 +29,47 @@
   var socket = io.connect();
   peer.on('open', function(){
 
-     var exists=true;
-    // while(exists==true){
-        name = prompt("Please enter an Alias Name for this device:", peer.id);
-        if (name== null||/^\s/.test(name)==true||name=="") {
-          alert("Alias name cannot be blank or have spaces in front");
+     function change_name (name){
+        var exists=true;
+       while(exists==true){
+          name = prompt("Please enter an Alias Name for this device:", peer.id);
+          if (name== null||/^\s/.test(name)==true||name=="") {
+            alert("Alias name cannot be blank or have spaces in front");
+          }
+          else{
+            exists=false;
+            socket.emit('check_peer_name',name);
+          }
+        }
+        return name;
+     }
+     
+     name=change_name(name);
+                
+      socket.on('name_result',function(result){
+        if(result==false)
+        {
+           var obj={};
+           obj[peer.id]=name;
+           socket.emit('addnewpeer', obj);
+           document.getElementById("alias_id").innerHTML ="Alias Name: "+name;
         }
         else
         {
-          console.log("inside else statment");
-          
-                socket.emit('check_peer_name',name,function(result)
-                {
-                  exists=result;    //if result is true, then the name exists and loop runs again
-                });
-          console.log("exist value outside socket:"+exists);
+          alert("Alias name exists. Set to default");
+          name=change_name(name);
         }
-                  console.log("exist value outside else:"+exists);
+      });
 
-    // }
+      document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id;
 
-     var obj={};
-     obj[name]=peer.id;
-     socket.emit('addnewpeer', obj);
-     document.getElementById("alias_id").innerHTML ="Alias Name: "+name;
+        
+
+    
+     //document.getElementById("alias_id").innerHTML ="Alias Name: "+name;
+
+
+
   
   });
   
