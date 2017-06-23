@@ -46,53 +46,42 @@ peerServer = ExpressPeerServer(serverlisten, peeroptions)
 peerapp.use('/', peerServer);
 var clients={};
 
-/*peerServer.on('connection', function(id) {
-    console.log(id+ " connected")
-    client_list.push(id);
-});
+  io.sockets.on('connection', function (socket) {
 
-peerServer.on('disconnect', function(id) {
-    console.log(id + " disconnected");
-    var index=client_list.indexOf(id);
-    client_list.splice(index,1);
-});*/
-peerServer.on('connection', function(id) {
-    clients[id]={"peername":id};
-});
-
-io.sockets.on('connection', function (socket) {
-  
-  socket.on('check_peer_name',function(name){
-    var exists=false;
-    for (var key in clients)
-    {
-      console.log("key :"+clients[key]['peername'])
-      if(clients[key]['peername']==name)
-      {
-        exists=true;
-        break;
+    socket.on('getClientList',function(){
+      for(var key in clients){
+      socket.emit("add",clients[key]);
       }
-    }
-    socket.emit('name_result',exists);
-  });
+    });
+    
 
-  socket.on('addnewpeer', function (newpeer) {
-    for (var key in newpeer){
-      clients[key]={"socketid":socket.id,"peername":newpeer[key]};
-    }
-  });
-  /*socket.on('disconnect',function(id){
-      delete clients[id];
-      console.log(socket.id+" disconnected");
-  });*/
+    socket.on('check_peer_name',function(name){
+      var exists=false;
+      for (var key in clients)
+      {
+        if(clients[key]['peername']==name&&clients[key]['peerid']!=name)
+        {
+          exists=true;
+          break;
+        }
+      }
+      socket.emit('name_result',exists);
+    });
 
-});
-  peerServer.on('disconnect', function(id) {
-   delete clients[id];
-});
-//var peerserver = peerhttps.createServer(options, peerapp).listen(9000);//require('http').createServer(peerapp);
-//peerapp.use('/', ExpressPeerServer(peerserver, options));
-//var peerjsbin = require('peer/bin/peerjs')
+    socket.on('addnewpeer', function (peerid) {
+        clients[socket.id]={"peerid":peerid,"peername":peerid};
+        io.emit("add",clients[socket.id]);
+    });
+
+    socket.on('editname', function (name) {
+        clients[socket.id]["peername"]=name;
+        io.emit("update",clients[socket.id]);
+    });
+    socket.on('disconnect',function(){
+      io.emit("remove",clients[socket.id]);
+      delete clients[socket.id];
+    })
+  });
 
 /***************************************************/
 
