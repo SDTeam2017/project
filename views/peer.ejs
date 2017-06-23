@@ -2,17 +2,17 @@
 <html>
   <head>
     <title>peer</title>
-        <link rel='stylesheet' href='/stylesheets/style.css'>
+    <link rel='stylesheet' href='/stylesheets/style.css'>
 
   </head>
   <body>
     <h1 class="aliasname" id="alias_id"></h1>
 	  <video id="videobox" ></video>
     <div class="aliaslist">
-      <h2 align="center">Alias List</h2>
-      <ul style="list-style-type:none; padding-left:0" id="alias_list">
-        <li>Coffee</li>
-      </ul> 
+      <table style="width:100%" id="alias_list">
+        <tr><th>Alias List</th></tr>
+        <tr><th>Peer Name</th>
+      </table>
     </div>
   </body>
 </html>
@@ -29,6 +29,23 @@
   var socket = io.connect();
   peer.on('open', function(){
 
+        socket.on('add',function(client){
+              var table = document.getElementById("alias_list");
+              var row = table.insertRow(table.rows.length);
+              row.setAttribute("id",client['peerid'])
+              var cell1 = row.insertCell(0);
+              cell1.innerHTML = client['peername'];
+         }); 
+         socket.on('update',function(client){
+              document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
+         }); 
+         socket.on('remove',function(client){
+              var rowIndex = document.getElementById(client['peerid']).rowIndex;
+              var table = document.getElementById("alias_list");
+              table.deleteRow(rowIndex);
+         }); 
+
+
      function change_name (name){
         var exists=true;
        while(exists==true){
@@ -43,34 +60,26 @@
         }
         return name;
      }
-     
-     name=change_name(name);
-                
       socket.on('name_result',function(result){
         if(result==false)
         {
-           var obj={};
-           obj[peer.id]=name;
-           socket.emit('addnewpeer', obj);
+           socket.emit('editname', name);
            document.getElementById("alias_id").innerHTML ="Alias Name: "+name;
         }
         else
         {
-          alert("Alias name exists. Set to default");
+          alert("Alias name exists.");
           name=change_name(name);
         }
       });
-
-      document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id;
-
-        
-
-    
-     //document.getElementById("alias_id").innerHTML ="Alias Name: "+name;
+     socket.emit('getClientList');
+     socket.emit('addnewpeer',peer.id);
+     document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id;
+     name=change_name(name);  
 
 
+     
 
-  
   });
   
    //fix later to getusermedia.js for all devices to work
