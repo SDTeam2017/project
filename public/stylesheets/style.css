@@ -1,8 +1,52 @@
-body {
-  padding: 50px;
-  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
-}
+/*Background color and font for all pages*/
+    html{
+    	height:100%;
+    	width:100%;
+    }
+    body {
+      	font: 14px "Arial";
+        margin: 0;
+        background: black;
+        height:100%;
+    	width:100%;
 
-a {
-  color: #00B7FF;
+    }
+
+    video{
+    	width: window.innerWidth;
+    	height: window.innerHeight; 
+    }
+
+    p{
+    	color: white;
+    }
+
+    h1.aliasname {
+    	position: absolute;
+    	left: 0px;
+    	top: 0px;
+    	color: white;
+    }
+    div.aliaslist {
+    	background-color:white; 
+    	height:100%; 
+    	width:20%;
+    	position:absolute;
+    	right:0px;
+    	top:0px;
+    }
+
+    table {
+    	    border-collapse: collapse;
+    	    width:100%;
+    }
+ 
+    table, th, td {
+        border: 1.5px solid red;
+     	color: black;
+
 }
+tr:hover{
+ background:red;
+}
+    
