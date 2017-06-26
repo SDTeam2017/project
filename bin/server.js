@@ -65,7 +65,8 @@ var clients={};
           break;
         }
       }
-      socket.emit('name_result',exists);
+      var obj={"name":name, "exists":exists}
+      socket.emit('name_result',obj);
     });
 
     socket.on('addnewpeer', function (peerid) {
