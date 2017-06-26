@@ -3,10 +3,9 @@
   <head>
     <title>peer</title>
     <link rel='stylesheet' href='/stylesheets/style.css'>
-
   </head>
   <body>
-    <h1 class="aliasname" id="alias_id"></h1>
+    <h1 class="aliasname" id="alias_id" ondblclick="change_name()"></h1>
 	  <video id="videobox" ></video>
     <div class="aliaslist">
       <table style="width:100%" id="alias_list">
@@ -21,65 +20,68 @@
 <script src="/socket.io/socket.io.js"></script>
 
 <script >
-  var peer_id, name, conn;
-  var name;
+  //make a new peer on current host's ip address
   var host= <%- JSON.stringify(host) %>
-
 	var peer = new Peer({host: host, port: 9000, path: '/', debug: 3});
+
+  //socket functions
   var socket = io.connect();
+var peer_id;
+  //adding a new peer
+  socket.on('add',function(client){
+      var table = document.getElementById("alias_list");
+      var row = table.insertRow(table.rows.length);
+      row.setAttribute("id",client['peerid'])
+      var cell1 = row.insertCell(0);
+      cell1.innerHTML = client['peername'];
+      cell1.ondblclick = function() {call(client['peerid'])};
+ }); 
+
+  //updating name of existing peer
+  socket.on('update',function(client){
+      document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
+ }); 
+
+      //removing peer from server, alias list, etc. when the device leaves
+     socket.on('remove',function(client){
+          var rowIndex = document.getElementById(client['peerid']).rowIndex;
+          var table = document.getElementById("alias_list");
+          table.deleteRow(rowIndex);
+     });
+
+     //function to change alias name
+    function change_name (){
+      var exists=true;
+      while(exists==true){
+        var name = prompt("Please enter an Alias Name for this device:", peer.id);
+        if (name==null||/^\s/.test(name)==true||name=="") {
+          alert("Alias name cannot be blank or have spaces in front");
+        }
+        else {
+          exists=false;
+          socket.emit('check_peer_name',name);
+        }
+      }
+    }
+
+    socket.on('name_result',function(result){
+      if(result['exists']==false)
+      {
+         socket.emit('editname', result['name']);
+         document.getElementById("alias_id").innerHTML ="Alias Name: "+result['name'];
+      }
+      else
+      {
+        alert("Alias name exists.");
+        change_name();
+      }
+    });
+
   peer.on('open', function(){
-
-        socket.on('add',function(client){
-              var table = document.getElementById("alias_list");
-              var row = table.insertRow(table.rows.length);
-              row.setAttribute("id",client['peerid'])
-              var cell1 = row.insertCell(0);
-              cell1.innerHTML = client['peername'];
-         }); 
-         socket.on('update',function(client){
-              document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
-         }); 
-         socket.on('remove',function(client){
-              var rowIndex = document.getElementById(client['peerid']).rowIndex;
-              var table = document.getElementById("alias_list");
-              table.deleteRow(rowIndex);
-         }); 
-
-
-     function change_name (name){
-        var exists=true;
-       while(exists==true){
-          name = prompt("Please enter an Alias Name for this device:", peer.id);
-          if (name== null||/^\s/.test(name)==true||name=="") {
-            alert("Alias name cannot be blank or have spaces in front");
-          }
-          else{
-            exists=false;
-            socket.emit('check_peer_name',name);
-          }
-        }
-        return name;
-     }
-      socket.on('name_result',function(result){
-        if(result==false)
-        {
-           socket.emit('editname', name);
-           document.getElementById("alias_id").innerHTML ="Alias Name: "+name;
-        }
-        else
-        {
-          alert("Alias name exists.");
-          name=change_name(name);
-        }
-      });
      socket.emit('getClientList');
      socket.emit('addnewpeer',peer.id);
      document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id;
-     name=change_name(name);  
-
-
-     
-
+     change_name();  
   });
   
    //fix later to getusermedia.js for all devices to work
@@ -87,6 +89,26 @@
                          navigator.mediaDevices.webkitGetUserMedia ||
                          navigator.mediaDevices.mozGetUserMedia;
 
+  var constraints = { audio: false, video: true }; 
+
+function call(peer_id){
+  navigator.mediaDevices.getUserMedia(constraints)
+  .then(function(stream) {
+    peer.call(peer_id, stream);
+  })
+  .catch(function(err) { console.log(err.name + ": " + err.message); });
+}
+
+  peer.on('call', function(call) {
+      call.answer(); // Answer the call with an A/V stream. 
+      call.on('stream', function(mediaConnection) {
+          var video = document.getElementById("videobox");
+          video.srcObject  = mediaConnection;
+          video.onloadedmetadata = function(e) {
+            video.play();
+          };
+        });
+});
 
 
 </script>
