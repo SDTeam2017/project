@@ -34,7 +34,11 @@ var peer_id;
       row.setAttribute("id",client['peerid'])
       var cell1 = row.insertCell(0);
       cell1.innerHTML = client['peername'];
-      cell1.ondblclick = function() {call(client['peerid'])};
+      cell1.ondblclick = function() {
+        //here we send our peerid to the peer we want a stream from, and "force" them to call us, and give us their stream
+        socket.emit('force_call',client['peerid']);
+      };
+        //call(client['peerid'])};
  }); 
 
   //updating name of existing peer
@@ -84,22 +88,25 @@ var peer_id;
      change_name();  
   });
   
-   //fix later to getusermedia.js for all devices to work
+
+
+socket.on('make_call',function(peer_id){
+     //fix later to getusermedia.js for all devices to work
   navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia ||    
                          navigator.mediaDevices.webkitGetUserMedia ||
                          navigator.mediaDevices.mozGetUserMedia;
-
-  var constraints = { audio: false, video: true }; 
-
-function call(peer_id){
+var constraints = { audio: false, video: true }; 
   navigator.mediaDevices.getUserMedia(constraints)
   .then(function(stream) {
     peer.call(peer_id, stream);
   })
   .catch(function(err) { console.log(err.name + ": " + err.message); });
-}
+});
 
-  peer.on('call', function(call) {
+
+
+
+   peer.on('call', function(call) {
       call.answer(); // Answer the call with an A/V stream. 
       call.on('stream', function(mediaConnection) {
           var video = document.getElementById("videobox");
