@@ -45,8 +45,14 @@ peerServer = ExpressPeerServer(serverlisten, peeroptions)
 
 peerapp.use('/', peerServer);
 var clients={};
+var peerid_to_socketid={};
 
   io.sockets.on('connection', function (socket) {
+
+    socket.on('force_call',function(peerid){
+      var socketid=peerid_to_socketid[peerid];
+      io.sockets.connected[socketid].emit('make_call',clients[socket.id]['peerid']);
+    });
 
     socket.on('getClientList',function(){
       for(var key in clients){
@@ -54,7 +60,6 @@ var clients={};
       }
     });
     
-
     socket.on('check_peer_name',function(name){
       var exists=false;
       for (var key in clients)
@@ -71,6 +76,7 @@ var clients={};
 
     socket.on('addnewpeer', function (peerid) {
         clients[socket.id]={"peerid":peerid,"peername":peerid};
+        peerid_to_socketid[peerid]=socket.id;
         io.emit("add",clients[socket.id]);
     });
 
