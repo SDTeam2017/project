@@ -1,20 +1,38 @@
 /*Background color and font for all pages*/
     html{
-    	height:100%;
-    	width:100%;
+    	position: absolute;
+        top:0;
+        bottom:0;
+        left:0;
+        right:0;
     }
     body {
       	font: 14px "Arial";
         margin: 0;
         background: black;
-        height:100%;
-    	width:100%;
-
+        position: absolute;
+        top:0;
+        bottom:0;
+        left:0;
+        right:0;
     }
 
     video{
-    	width: window.innerWidth;
-    	height: window.innerHeight; 
+    	width: 100%;
+    	height: 100%; 
+    }
+    table.videos{
+        width: 100%;
+        height: 100%;
+        border: 3px solid #73AD21;
+        border-collapse: collapse;
+    }
+    div.videos{
+        position: absolute;
+        bottom: 0;
+        top:10%;
+        right:0;
+        left:0;
     }
 
     p{
@@ -22,31 +40,48 @@
     }
 
     h1.aliasname {
-    	position: absolute;
-    	left: 0px;
-    	top: 0px;
+    	position:fixed;
+    	left: 0;
+    	top: 0;
     	color: white;
     }
-    div.aliaslist {
-    	background-color:white; 
-    	height:100%; 
-    	width:20%;
-    	position:absolute;
-    	right:0px;
-    	top:0px;
+    h1.aliasname:hover{
+    	color: red;
+        cursor:pointer
     }
 
-    table {
-    	    border-collapse: collapse;
-    	    width:100%;
+    .dropdown {
+        position: absolute;
+        right:0; 
+        top:0;
+        width:20%;
+        display: inline-block;
+    }
+
+    .dropdown-content {
+        display: none;
+        background-color: white;
+       overflow: auto;
+       z-index:1;
+       position:relative;
+    }
+    .dropdown:hover{
+        border: 1.5px solid red;
+        cursor: pointer;
+    }
+    .dropdown:hover .dropdown-content {
+        display: block;
+        cursor: pointer;
     }
  
-    table, th, td {
+th, td {
         border: 1.5px solid red;
-     	color: black;
-
 }
-tr:hover{
+th.aliaslist:hover{
+    cursor: not-allowed;
+}
+tr.aliaslist:hover{
  background:red;
+ cursor:pointer
 }
     
