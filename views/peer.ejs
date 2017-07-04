@@ -5,12 +5,18 @@
     <link rel='stylesheet' href='/stylesheets/style.css'>
   </head>
   <body>
-    <h1 class="aliasname" id="alias_id" ondblclick="change_name()"></h1>
-	  <video id="videobox" ></video>
-    <div class="aliaslist">
-      <table style="width:100%" id="alias_list">
-        <tr><th>Alias List</th></tr>
-        <tr><th>Peer Name</th>
+    <div><h1 class="aliasname" id="alias_id" onclick="change_name()"></h1></div>
+    <div class="dropdown">
+      <h2 style="color:white; text-align: center;">Alias List</h2>
+        <div class="dropdown-content">
+             <table style="border-collapse: collapse; width:100%;" id="alias_list">
+                <tr><th class="aliaslist">Peer Name</th></tr>
+              </table>
+        </div>
+    </div>
+    <div class="videos"> 
+      <table id="video_table" class="videos">
+          <tr><td><video id="videobox"></video></td></tr>
       </table>
     </div>
   </body>
@@ -20,82 +26,90 @@
 <script src="/socket.io/socket.io.js"></script>
 
 <script >
-  //make a new peer on current host's ip address
+  
+  //get the host (server) ip address
   var host= <%- JSON.stringify(host) %>
+  //make a new peer on the peerjs server vs port 9000
 	var peer = new Peer({host: host, port: 9000, path: '/', debug: 3});
 
   //socket functions
   var socket = io.connect();
-var peer_id;
-  //adding a new peer
+  //var peer_id;  //i dont think we need this?
+
+  //when new device connects, add it to the alias list, which is in the form of a table. The function receive an object called client and has the value {"peername":new_client_name, "peerid":new_client_id}
   socket.on('add',function(client){
       var table = document.getElementById("alias_list");
       var row = table.insertRow(table.rows.length);
-      row.setAttribute("id",client['peerid'])
+      row.setAttribute("id",client['peerid']) 
+      row.setAttribute("class","aliaslist")     
       var cell1 = row.insertCell(0);
       cell1.innerHTML = client['peername'];
-      cell1.ondblclick = function() {
-        //here we send our peerid to the peer we want a stream from, and "force" them to call us, and give us their stream
+      cell1.onclick = function() { //when the cell in the table with this peername is clicked, run this function
+        //here we send the peerid of the peer we want a stream from to the server, and the server tells that remote device to send its stream to my peerid.
         socket.emit('force_call',client['peerid']);
       };
-        //call(client['peerid'])};
  }); 
 
-  //updating name of existing peer
+  //updating name of existing peer in the table
   socket.on('update',function(client){
       document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
  }); 
 
-      //removing peer from server, alias list, etc. when the device leaves
+  //removing peer alias list table when the device leaves the website and is removed from server
      socket.on('remove',function(client){
           var rowIndex = document.getElementById(client['peerid']).rowIndex;
           var table = document.getElementById("alias_list");
           table.deleteRow(rowIndex);
      });
 
-     //function to change alias name
+  //after the server checks if an enterered alias name is valid or not, this function obtains the result. Result = {'name':alias_name_entered_by_user, 'exists':true_or_false}. If alias name already exists for another connected device, server returns true, otherwise false.
+socket.on('name_result',function(result){
+      if(result['exists']==false) //if alias name is not taken by another device
+      {
+         socket.emit('editname', result['name']); //change the display name in the alias table
+         document.getElementById("alias_id").innerHTML ="Alias Name: "+result['name'];    //change displayed name on page
+      }
+      else    //if aliass name is taken
+      {
+        alert("Alias name exists.");
+        change_name();  //ask user to pick a new alias name
+      }
+    });
+
+    //function to change alias name
     function change_name (){
-      var exists=true;
+      var exists=true; //boolean variable to keep loop repeating until valid input is read.
       while(exists==true){
         var name = prompt("Please enter an Alias Name for this device:", peer.id);
-        if (name==null||/^\s/.test(name)==true||name=="") {
+        if (name==null||/^\s/.test(name)==true||name=="") {               
+        //checks if name entered is valid. No spaces before, and no blank entries are allowed           
           alert("Alias name cannot be blank or have spaces in front");
         }
         else {
+          //if valid input is read, stop the loop and send the name to the server to be checked if it is taken by another device already or not.
           exists=false;
           socket.emit('check_peer_name',name);
         }
       }
     }
 
-    socket.on('name_result',function(result){
-      if(result['exists']==false)
-      {
-         socket.emit('editname', result['name']);
-         document.getElementById("alias_id").innerHTML ="Alias Name: "+result['name'];
-      }
-      else
-      {
-        alert("Alias name exists.");
-        change_name();
-      }
-    });
-
+//this runs right when a peer connects to the webpage
   peer.on('open', function(){
-     socket.emit('getClientList');
-     socket.emit('addnewpeer',peer.id);
-     document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id;
-     change_name();  
+     socket.emit('getClientList');    //get all devices connected to server 
+     socket.emit('addnewpeer',peer.id);   //add this device to the server client list
+     document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id; //display peer.id on page
+     change_name();  //ask user to change alias name of this device
   });
   
-
-
+//this is run when the server gets a notification that a device is requesting this devices stream. The server sends a 'make_call' signal to this device. The 'peer_id' received in the function below is the peer.id of the device that made the request for this peers stream.
 socket.on('make_call',function(peer_id){
-     //fix later to getusermedia.js for all devices to work
+     //fix later to getusermedia.js for all devices to work if they do not support webrtc
   navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia ||    
                          navigator.mediaDevices.webkitGetUserMedia ||
                          navigator.mediaDevices.mozGetUserMedia;
-var constraints = { audio: false, video: true }; 
+var constraints = { audio: false, video:true, optional:[{facingMode: "environment"}]}; //send only video, not audio. will be fixed later to be options for user to send one or both.
+
+//make a call to the peer that requested this devices stream, and send the stream to them.
   navigator.mediaDevices.getUserMedia(constraints)
   .then(function(stream) {
     peer.call(peer_id, stream);
@@ -104,15 +118,32 @@ var constraints = { audio: false, video: true };
 });
 
 
-
-
+//this event is run when a stream is being sent to this device by another peer on the network.
    peer.on('call', function(call) {
       call.answer(); // Answer the call with an A/V stream. 
       call.on('stream', function(mediaConnection) {
-          var video = document.getElementById("videobox");
+        /*DONT WORRY ABOUT THIS PART. THIS IS BEING FIXED BY ARJUN. IT IS FOR MULTIPLE STREAMS TO BE RUN
+              var rows=document.getElementById("video_table").rows;
+              var maxwidth=rows[0].offsetWidth;
+              //iterate through all rows. see if any have empty space
+              for(var x=0;x<rows.length;x++)
+              { 
+                var num_of_cells=rows[x].cells.length;
+                //find an empty cell, checks its size and see if stream can be placed in that cell
+                for( var y=0;y<num_of_cells;y++){
+                  if(rows[x].cells[y].innerHTML===''&&rows[x].cells[y].offsetWidth<=video.videoWidth/2&&rows[x].cells[y].offsetHeight<=video.videoHeight/2){
+                     //insert video into this cell
+                  }
+                }
+        }*/
+
+        //place the stream on to the page and once its meta data is loaded, play the stream
+          var video= document.getElementById("videobox");
           video.srcObject  = mediaConnection;
+
           video.onloadedmetadata = function(e) {
             video.play();
+            //console.log(video.videoWidth);
           };
         });
 });
