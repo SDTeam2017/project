@@ -3,7 +3,7 @@
 /**
  * Module dependencies.
  */
-
+/*dont worry about this section for now*/
 var app = require('../app');
 var debug = require('debug')('myapp:server');
 //var http = require('http');
@@ -35,7 +35,6 @@ var peeroptions = {
 };
 
 var serverlisten = peerhttps.createServer(options, peerapp).listen(9000);
-
 peerapp.get('/api', function(req, res, next) {
     console.log("get /")
     res.send('peer server running');
@@ -44,50 +43,66 @@ peerapp.get('/api', function(req, res, next) {
 peerServer = ExpressPeerServer(serverlisten, peeroptions)
 
 peerapp.use('/', peerServer);
-var clients={};
-var peerid_to_socketid={};
 
+
+/////////////////////////////////////////////////////////////////////
+/*THIS IS THE SECTION YOU SHOULD UNDERSTAND*/
+
+var clients={};         //holds objvet made of client peer.id and client peername. the key is the socket.id
+var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
   io.sockets.on('connection', function (socket) {
-
-    socket.on('force_call',function(peerid){
-      var socketid=peerid_to_socketid[peerid];
-      io.sockets.connected[socketid].emit('make_call',clients[socket.id]['peerid']);
-    });
-
+    
+//send peerid and peername of all connected devices to a device that is just added to the network
     socket.on('getClientList',function(){
       for(var key in clients){
       socket.emit("add",clients[key]);
       }
     });
-    
-    socket.on('check_peer_name',function(name){
-      var exists=false;
-      for (var key in clients)
-      {
-        if(clients[key]['peername']==name&&clients[key]['peerid']!=name)
-        {
-          exists=true;
-          break;
-        }
-      }
-      var obj={"name":name, "exists":exists}
-      socket.emit('name_result',obj);
-    });
 
+//when a new peer connects to network
     socket.on('addnewpeer', function (peerid) {
         clients[socket.id]={"peerid":peerid,"peername":peerid};
         peerid_to_socketid[peerid]=socket.id;
         io.emit("add",clients[socket.id]);
     });
 
+//when a peer changes its alias name on the network
     socket.on('editname', function (name) {
         clients[socket.id]["peername"]=name;
         io.emit("update",clients[socket.id]);
     });
+
+//when client disconnects from network
     socket.on('disconnect',function(){
-      io.emit("remove",clients[socket.id]);
-      delete clients[socket.id];
+      io.emit("remove",clients[socket.id]);   //tell all clients to remove the client from their alias tables
+      delete clients[socket.id];    //remove the saved peerid and peername
     })
+
+//checks if an entered alias name is already taken by another device. 
+socket.on('check_peer_name',function(name){
+      var exists=false;   
+      for (var key in clients)
+      {
+        if(clients[key]['peername']==name&&clients[key]['peerid']!=name)  //if name is taken by another client
+        {
+          exists=true;
+          break;  //stop searching the client list and break out of for loop
+        }
+      }
+      var obj={"name":name, "exists":exists} 
+      socket.emit('name_result',obj); //tell the peer that the name they entered is taken or not
+    });
+
+//when a local device requests a remote device stream, the server send the peerid of local device to the 
+// remote device so that it can place a call and send its stream to the local device.
+//Function receives the peerid of the remote device that the local device wants a stream from
+    socket.on('force_call',function(peerid){  
+      var socketid=peerid_to_socketid[peerid];  //look up socket id of the remove device based on its peerid
+
+      //emit to the remote device only, and tell it to call the local device by passing it the local device
+      //peerid
+      io.sockets.connected[socketid].emit('make_call',clients[socket.id]['peerid']);
+    });
   });
 
 /***************************************************/
