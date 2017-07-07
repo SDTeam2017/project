@@ -17,10 +17,21 @@
         right:0;
     }
 
-    video{
+    video.peerVideo{
     	width: 100%;
     	height: 100%; 
     }
+    video.myVideo{
+            
+            border: 3px solid #73AD21;
+            height: 0%;
+            width:0%;
+            right:20%;
+            top:0%;
+            position: absolute;
+
+    }
+
     table.videos{
         width: 100%;
         height: 100%;
