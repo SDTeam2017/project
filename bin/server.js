@@ -103,6 +103,16 @@ socket.on('check_peer_name',function(name){
       //peerid
       io.sockets.connected[socketid].emit('make_call',clients[socket.id]['peerid']);
     });
+
+    socket.on('give_me_resolution',function(peerid){
+        var socketid=peerid_to_socketid[peerid]; //get socket id we want the resolution from
+        io.sockets.connected[socketid].emit('get_resolution',clients[socket.id]['peerid']);
+    });
+    socket.on('my_resolution',function(data){
+      var socketid=peerid_to_socketid[data['peerid']]; //get socket of peer that requested the resolution
+      var obj={'height':data['height'],'width':data['width'],'peerid':clients[socket.id]['peerid']};
+      io.sockets.connected[socketid].emit('here_is_resolution',obj);
+    })
   });
 
 /***************************************************/
