@@ -6,6 +6,7 @@
   </head>
   <body>
     <div><h1 class="aliasname" id="alias_id" onclick="change_name()"></h1></div>
+    <video id="myVideo" class="myVideo"></video>
     <div class="dropdown">
       <h2 style="color:white; text-align: center;">Alias List</h2>
         <div class="dropdown-content">
@@ -16,7 +17,7 @@
     </div>
     <div class="videos"> 
       <table id="video_table" class="videos">
-          <tr><td><video id="videobox"></video></td></tr>
+          <tr><td></td></tr>
       </table>
     </div>
   </body>
@@ -36,6 +37,28 @@
   var socket = io.connect();
   //var peer_id;  //i dont think we need this?
 
+//////////////////////my video section
+  //fix later to getusermedia.js for all devices to work if they do not support webrtc
+  navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia ||    
+                         navigator.mediaDevices.webkitGetUserMedia ||
+                         navigator.mediaDevices.mozGetUserMedia;
+  var constraints = { audio: true, video:{ facingMode: "environment" }} ; //send only video, not audio. will be fixed later to be options for user to send one or both.
+  var myHeight;
+  var myWidth;
+    navigator.mediaDevices.getUserMedia(constraints)
+  .then(function(stream) {
+        var video= document.getElementById("myVideo");
+        video.srcObject  = stream;
+        video.onloadedmetadata = function(e) {
+          myHeight=video.videoHeight;
+          myWidth=video.videoWidth;
+              };
+  })
+  .catch(function(err) { console.log(err.name + ": " + err.message); });
+
+var id_of_caller; //must fix this later. horrible solution
+//////////////////////
+
   //when new device connects, add it to the alias list, which is in the form of a table. The function receive an object called client and has the value {"peername":new_client_name, "peerid":new_client_id}
   socket.on('add',function(client){
       var table = document.getElementById("alias_list");
@@ -46,7 +69,8 @@
       cell1.innerHTML = client['peername'];
       cell1.onclick = function() { //when the cell in the table with this peername is clicked, run this function
         //here we send the peerid of the peer we want a stream from to the server, and the server tells that remote device to send its stream to my peerid.
-        socket.emit('force_call',client['peerid']);
+       socket.emit('give_me_resolution',client['peerid']);//get video resolution of the peer clicked
+       id_of_caller=client['peerid'];
       };
  }); 
 
@@ -101,51 +125,88 @@ socket.on('name_result',function(result){
      change_name();  //ask user to change alias name of this device
   });
   
+socket.on('get_resolution',function(peerid){
+    //send my resoltuion to the peer with peerid
+    socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth});
+});
+socket.on('here_is_resolution',function(data){
+ //DONT WORRY ABOUT THIS PART. THIS IS BEING FIXED BY ARJUN. IT IS FOR MULTIPLE STREAMS TO BE RUN
+              var table=document.getElementById("video_table");
+              var rows=table.rows;
+              //if(rows.length>0)
+               // var maxwidth=rows[0].offsetWidth;
+              var videoboxid="vb_"+data['peerid'];
+              //iterate through all rows. see if any have empty space
+              console.log("rows length:"+rows.length)
+              var inserted=false;
+              
+              for(var x=0;x<rows.length;x++)
+              { 
+                var num_of_cells=rows[x].cells.length;
+                console.log("num of cells:"+num_of_cells)
+                //find an empty cell, checks its size and see if stream can be placed in that cell
+                for( var y=0;y<num_of_cells;y++){
+                  if(rows[x].cells[y].innerHTML===''&&rows[x].cells[y].offsetWidth>=(data['width']/2)&&rows[x].cells[y].offsetHeight>=(data['height']/2)){
+                     rows[x].cells[y].innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video>";
+                     inserted=true;
+                     break;
+                  }
+
+                }
+        }
+        if(inserted==false)
+        {
+          var newRow=table.insertRow(rows.length);
+          var newCell=newRow.insertCell(0);
+          newCell.innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video>";
+        }
+                socket.emit('force_call',data['peerid']);
+
+        //<video id="videobox" class="peerVideo"></video>
+});
 //this is run when the server gets a notification that a device is requesting this devices stream. The server sends a 'make_call' signal to this device. The 'peer_id' received in the function below is the peer.id of the device that made the request for this peers stream.
 socket.on('make_call',function(peer_id){
-     //fix later to getusermedia.js for all devices to work if they do not support webrtc
-  navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia ||    
-                         navigator.mediaDevices.webkitGetUserMedia ||
-                         navigator.mediaDevices.mozGetUserMedia;
-var constraints = { audio: false, video:true, optional:[{facingMode: "environment"}]}; //send only video, not audio. will be fixed later to be options for user to send one or both.
 
-//make a call to the peer that requested this devices stream, and send the stream to them.
   navigator.mediaDevices.getUserMedia(constraints)
   .then(function(stream) {
+        var video= document.getElementById("myVideo");
+        video.srcObject  = stream;
+        video.onloadedmetadata = function(e) {
+          console.log(video.videoHeight)
+              };
     peer.call(peer_id, stream);
   })
   .catch(function(err) { console.log(err.name + ": " + err.message); });
+//make a call to the peer that requested this devices stream, and send the stream to them.
+  
 });
 
 
 //this event is run when a stream is being sent to this device by another peer on the network.
    peer.on('call', function(call) {
+          var video= document.getElementById("vb_"+id_of_caller);
+
       call.answer(); // Answer the call with an A/V stream. 
       call.on('stream', function(mediaConnection) {
-        /*DONT WORRY ABOUT THIS PART. THIS IS BEING FIXED BY ARJUN. IT IS FOR MULTIPLE STREAMS TO BE RUN
-              var rows=document.getElementById("video_table").rows;
-              var maxwidth=rows[0].offsetWidth;
-              //iterate through all rows. see if any have empty space
-              for(var x=0;x<rows.length;x++)
-              { 
-                var num_of_cells=rows[x].cells.length;
-                //find an empty cell, checks its size and see if stream can be placed in that cell
-                for( var y=0;y<num_of_cells;y++){
-                  if(rows[x].cells[y].innerHTML===''&&rows[x].cells[y].offsetWidth<=video.videoWidth/2&&rows[x].cells[y].offsetHeight<=video.videoHeight/2){
-                     //insert video into this cell
-                  }
-                }
-        }*/
-
+       
         //place the stream on to the page and once its meta data is loaded, play the stream
-          var video= document.getElementById("videobox");
+          
           video.srcObject  = mediaConnection;
 
           video.onloadedmetadata = function(e) {
             video.play();
-            //console.log(video.videoWidth);
+            
           };
         });
+
+      call.on('close',function(){
+        var cell=video.parentNode;
+        var row=cell.parentNode;
+        var tableBody=row.parentNode;
+        tableBody.removeChild(row);       
+         //parent.removeChild(video);
+
+      })
 });
 
 
