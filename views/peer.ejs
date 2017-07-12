@@ -11,7 +11,13 @@
       <h2 style="color:white; text-align: center;">Alias List</h2>
         <div class="dropdown-content">
              <table style="border-collapse: collapse; width:100%;" id="alias_list">
-                <tr><th class="aliaslist">Peer Name</th></tr>
+                <tr>
+                	<th class="aliaslist">Peer Name</th>
+                	<td>Camera</td>
+                	<td>Microphone</td>
+                	<td>Browser</td>
+                	<td>OS</td>
+            	</tr>
               </table>
         </div>
     </div>
@@ -25,9 +31,9 @@
 
 <script src="/javascripts/peer.js"></script>
 <script src="/socket.io/socket.io.js"></script>
-
+<script src="/detectrtc/DetectRTC.js"></script>
 <script >
-  
+
   //get the host (server) ip address
   var host= <%- JSON.stringify(host) %>
   //make a new peer on the peerjs server vs port 9000
@@ -39,22 +45,15 @@
 
 //////////////////////my video section
   //fix later to getusermedia.js for all devices to work if they do not support webrtc
-  navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia ||    
+ navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia ||    
                          navigator.mediaDevices.webkitGetUserMedia ||
                          navigator.mediaDevices.mozGetUserMedia;
   var constraints = { audio: true, video:{ facingMode: "environment" }} ; //send only video, not audio. will be fixed later to be options for user to send one or both.
-  var myHeight;
-  var myWidth;
-    navigator.mediaDevices.getUserMedia(constraints)
-  .then(function(stream) {
-        var video= document.getElementById("myVideo");
-        video.srcObject  = stream;
-        video.onloadedmetadata = function(e) {
-          myHeight=video.videoHeight;
-          myWidth=video.videoWidth;
-              };
-  })
-  .catch(function(err) { console.log(err.name + ": " + err.message); });
+  var myHeight=0;
+  var myWidth=0;
+  //console.log(DetectRTC.hasMicrophone + " Dafuq bro");
+
+
 
 var id_of_caller; //must fix this later. horrible solution
 //////////////////////
@@ -92,6 +91,8 @@ socket.on('name_result',function(result){
       {
          socket.emit('editname', result['name']); //change the display name in the alias table
          document.getElementById("alias_id").innerHTML ="Alias Name: "+result['name'];    //change displayed name on page
+         //getDeviceCharacteristics();
+         DetectRTC.load(loadDetectRTC);
       }
       else    //if aliass name is taken
       {
@@ -123,8 +124,63 @@ socket.on('name_result',function(result){
      socket.emit('addnewpeer',peer.id);   //add this device to the server client list
      document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id; //display peer.id on page
      change_name();  //ask user to change alias name of this device
+     //getDeviceCharacteristics();
   });
-  
+  function getDeviceCharacteristics()
+	{
+	   
+
+		 var table = document.getElementById("alias_list");
+		 console.log(table.rows.length);
+		 var myrow = document.getElementById("alias_list").rows[1];
+		 hasWebcam =myrow.insertCell(1);
+		 hasMicrophone =myrow.insertCell(2);
+		 deviceBrowser =myrow.insertCell(3);
+		 deviceOS= myrow.insertCell(4);
+
+		 if(DetectRTC.hasWebcam){
+		 	hasWebcam.innerHTML= "Has Camera\n"+myWidth+"x"+myHeight;
+		 }
+		 if(DetectRTC.hasMicrophone){
+		 	hasMicrophone.innerHTML = "Has Microphone"
+		 }
+		 deviceOS.innerHTML= DetectRTC.osName + ": " + DetectRTC.osVersion;
+		 deviceBrowser.innerHTML = DetectRTC.browser.name + ": " + DetectRTC.browser.version;
+		 
+	}
+  function loadDetectRTC()
+  {
+  	 navigator.mediaDevices.getUserMedia(constraints)
+		  .then(function(stream) {
+		        var video= document.getElementById("myVideo");
+		        video.srcObject  = stream;
+		        //window.stream =mediaStream;
+		        /*video.onloadedmetadata = function(e) {
+		          myHeight=video.videoHeight;
+		          myWidth=video.videoWidth;
+		          console.log(video.videoWidth);
+		        };*/
+		        console.log(video.videoWidth);
+  				myHeight=video.videoHeight;
+		          myWidth=video.videoWidth;
+		        if (stream) {
+		        stream.getTracks().forEach(function (track) {
+		            track.stop();
+		        });
+		    }
+
+		    getDeviceCharacteristics();
+		  })
+		  .catch(function(err) { console.log(err.name + ": " + err.message); });
+
+
+		   console.log(DetectRTC.hasWebcam);
+
+		  
+  }
+
+	
+   
 socket.on('get_resolution',function(peerid){
     //send my resoltuion to the peer with peerid
     socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth});

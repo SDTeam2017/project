@@ -23,6 +23,7 @@ var server = https.createServer(options, app
 }*/
 ).listen(80);
 var io = require('socket.io')(server);
+var detectRTC = require('detectrtc');
 /*code for peerjs with existing express app*/
 /*********************************************/
 var peerhttps = require('https');
