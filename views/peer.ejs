@@ -17,7 +17,7 @@
     </div>
     <div class="videos"> 
       <table id="video_table" class="videos">
-          <tr><td></td></tr>
+          
       </table>
     </div>
   </body>
@@ -130,20 +130,17 @@ socket.on('get_resolution',function(peerid){
     socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth});
 });
 socket.on('here_is_resolution',function(data){
- //DONT WORRY ABOUT THIS PART. THIS IS BEING FIXED BY ARJUN. IT IS FOR MULTIPLE STREAMS TO BE RUN
               var table=document.getElementById("video_table");
               var rows=table.rows;
               //if(rows.length>0)
                // var maxwidth=rows[0].offsetWidth;
               var videoboxid="vb_"+data['peerid'];
               //iterate through all rows. see if any have empty space
-              console.log("rows length:"+rows.length)
               var inserted=false;
               
               for(var x=0;x<rows.length;x++)
               { 
                 var num_of_cells=rows[x].cells.length;
-                console.log("num of cells:"+num_of_cells)
                 //find an empty cell, checks its size and see if stream can be placed in that cell
                 for( var y=0;y<num_of_cells;y++){
                   if(rows[x].cells[y].innerHTML===''&&rows[x].cells[y].offsetWidth>=(data['width']/2)&&rows[x].cells[y].offsetHeight>=(data['height']/2)){
@@ -157,7 +154,8 @@ socket.on('here_is_resolution',function(data){
         if(inserted==false)
         {
           var newRow=table.insertRow(rows.length);
-          var newCell=newRow.insertCell(0);
+          var newCell=newRow.insertCell(0);          
+          newCell.setAttribute("width",(data['width']/4));
           newCell.innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video>";
         }
                 socket.emit('force_call',data['peerid']);
@@ -195,7 +193,7 @@ socket.on('make_call',function(peer_id){
 
           video.onloadedmetadata = function(e) {
             video.play();
-            
+
           };
         });
 
