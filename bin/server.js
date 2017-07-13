@@ -72,7 +72,7 @@ var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
         clients[socket.id]["peername"]=name;
         io.emit("update",clients[socket.id]);
     });
-
+    //socket.on ()
 //when client disconnects from network
     socket.on('disconnect',function(){
       io.emit("remove",clients[socket.id]);   //tell all clients to remove the client from their alias tables

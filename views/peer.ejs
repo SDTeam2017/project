@@ -49,11 +49,18 @@
                          navigator.mediaDevices.webkitGetUserMedia ||
                          navigator.mediaDevices.mozGetUserMedia;
   var constraints = { audio: true, video:{ facingMode: "environment" }} ; //send only video, not audio. will be fixed later to be options for user to send one or both.
-  var myHeight=0;
-  var myWidth=0;
-  //console.log(DetectRTC.hasMicrophone + " Dafuq bro");
-
-
+  var myHeight;
+  var myWidth;
+   /* navigator.mediaDevices.getUserMedia(constraints)
+  .then(function(stream) {
+        var video= document.getElementById("myVideo");
+        video.srcObject  = stream;
+        video.onloadedmetadata = function(e) {
+          myHeight=video.videoHeight;
+          myWidth=video.videoWidth;
+              };
+  })
+  .catch(function(err) { console.log(err.name + ": " + err.message); });*/
 
 var id_of_caller; //must fix this later. horrible solution
 //////////////////////
@@ -76,6 +83,7 @@ var id_of_caller; //must fix this later. horrible solution
   //updating name of existing peer in the table
   socket.on('update',function(client){
       document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
+      //document.getElementById(client['peerid']).cells[1].innerHTML="xx";
  }); 
 
   //removing peer alias list table when the device leaves the website and is removed from server
@@ -91,8 +99,7 @@ socket.on('name_result',function(result){
       {
          socket.emit('editname', result['name']); //change the display name in the alias table
          document.getElementById("alias_id").innerHTML ="Alias Name: "+result['name'];    //change displayed name on page
-         //getDeviceCharacteristics();
-         DetectRTC.load(loadDetectRTC);
+         //DetectRTC.load(loadDetectRTC);
       }
       else    //if aliass name is taken
       {
@@ -124,15 +131,16 @@ socket.on('name_result',function(result){
      socket.emit('addnewpeer',peer.id);   //add this device to the server client list
      document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id; //display peer.id on page
      change_name();  //ask user to change alias name of this device
-     //getDeviceCharacteristics();
+     DetectRTC.load(loadDetectRTC);
   });
   function getDeviceCharacteristics()
 	{
 	   
 
 		 var table = document.getElementById("alias_list");
-		 console.log(table.rows.length);
-		 var myrow = document.getElementById("alias_list").rows[1];
+		 var rowIndex= table.rows.length;
+		 var myrow = document.getElementById("alias_list").rows[rowIndex-1];
+
 		 hasWebcam =myrow.insertCell(1);
 		 hasMicrophone =myrow.insertCell(2);
 		 deviceBrowser =myrow.insertCell(3);
@@ -150,33 +158,37 @@ socket.on('name_result',function(result){
 	}
   function loadDetectRTC()
   {
-  	 navigator.mediaDevices.getUserMedia(constraints)
+  	    navigator.mediaDevices.getUserMedia(constraints)
+	  .then(function(stream) {
+  	 var video= document.getElementById("myVideo");
+        video.srcObject  = stream;
+        video.onloadedmetadata = function(e) {
+          myHeight=video.videoHeight;
+          myWidth=video.videoWidth;
+              };
+	  	// getDeviceCharacteristics();
+	  	 setTimeout(function e(){
+	  	 	if (stream) {
+		        stream.getTracks().forEach(function (track) {
+		            track.stop();
+	            })
+	        }; 
+	         getDeviceCharacteristics();
+	    }, 1000);
+ 		 
+	  })
+	  .catch(function(err) { console.log(err.name + ": " + err.message); });
+	  //console.log(myHeight);
+    	/* navigator.mediaDevices.getUserMedia(constraints)
 		  .then(function(stream) {
-		        var video= document.getElementById("myVideo");
-		        video.srcObject  = stream;
-		        //window.stream =mediaStream;
-		        /*video.onloadedmetadata = function(e) {
-		          myHeight=video.videoHeight;
-		          myWidth=video.videoWidth;
-		          console.log(video.videoWidth);
-		        };*/
-		        console.log(video.videoWidth);
-  				myHeight=video.videoHeight;
-		          myWidth=video.videoWidth;
-		        if (stream) {
+		        /*if (stream) {
 		        stream.getTracks().forEach(function (track) {
 		            track.stop();
 		        });
 		    }
-
 		    getDeviceCharacteristics();
 		  })
-		  .catch(function(err) { console.log(err.name + ": " + err.message); });
-
-
-		   console.log(DetectRTC.hasWebcam);
-
-		  
+		  .catch(function(err) { console.log(err.name + ": " + err.message); });	  */
   }
 
 	
