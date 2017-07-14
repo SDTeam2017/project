@@ -49,18 +49,15 @@
                          navigator.mediaDevices.webkitGetUserMedia ||
                          navigator.mediaDevices.mozGetUserMedia;
   var constraints = { audio: true, video:{ facingMode: "environment" }} ; //send only video, not audio. will be fixed later to be options for user to send one or both.
+
+  //Device Characteristics
   var myHeight;
   var myWidth;
-   /* navigator.mediaDevices.getUserMedia(constraints)
-  .then(function(stream) {
-        var video= document.getElementById("myVideo");
-        video.srcObject  = stream;
-        video.onloadedmetadata = function(e) {
-          myHeight=video.videoHeight;
-          myWidth=video.videoWidth;
-              };
-  })
-  .catch(function(err) { console.log(err.name + ": " + err.message); });*/
+  var myCamera;
+  var myMicrophone;
+  var myOs;
+  var myBrowser;
+  var DeviceCharacteristics={};
 
 var id_of_caller; //must fix this later. horrible solution
 //////////////////////
@@ -71,9 +68,18 @@ var id_of_caller; //must fix this later. horrible solution
       var row = table.insertRow(table.rows.length);
       row.setAttribute("id",client['peerid']) 
       row.setAttribute("class","aliaslist")     
-      var cell1 = row.insertCell(0);
-      cell1.innerHTML = client['peername'];
-      cell1.onclick = function() { //when the cell in the table with this peername is clicked, run this function
+      var peernameCell = row.insertCell(0);
+      var cameraCell= row.insertCell(1);
+      var micCell= row.insertCell(2);
+      var browserCell= row.insertCell(3);
+      var osCell= row.insertCell(4);
+      peernameCell.innerHTML = client['peername'];
+      cameraCell.innerHTML =client['Camera'];
+      micCell.innerHTML =client['Microphone'];
+      browserCell.innerHTML =client['Browser'];
+      osCell.innerHTML =client['OS'];
+
+      peernameCell.onclick = function() { //when the cell in the table with this peername is clicked, run this function
         //here we send the peerid of the peer we want a stream from to the server, and the server tells that remote device to send its stream to my peerid.
        socket.emit('give_me_resolution',client['peerid']);//get video resolution of the peer clicked
        id_of_caller=client['peerid'];
@@ -83,7 +89,11 @@ var id_of_caller; //must fix this later. horrible solution
   //updating name of existing peer in the table
   socket.on('update',function(client){
       document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
-      //document.getElementById(client['peerid']).cells[1].innerHTML="xx";
+      document.getElementById(client['peerid']).cells[1].innerHTML=client['Camera'];
+      document.getElementById(client['peerid']).cells[2].innerHTML=client['Microphone'];
+      document.getElementById(client['peerid']).cells[3].innerHTML=client['Browser'];
+      document.getElementById(client['peerid']).cells[4].innerHTML=client['OS'];
+
  }); 
 
   //removing peer alias list table when the device leaves the website and is removed from server
@@ -99,7 +109,6 @@ socket.on('name_result',function(result){
       {
          socket.emit('editname', result['name']); //change the display name in the alias table
          document.getElementById("alias_id").innerHTML ="Alias Name: "+result['name'];    //change displayed name on page
-         //DetectRTC.load(loadDetectRTC);
       }
       else    //if aliass name is taken
       {
@@ -127,38 +136,38 @@ socket.on('name_result',function(result){
 
 //this runs right when a peer connects to the webpage
   peer.on('open', function(){
-     socket.emit('getClientList');    //get all devices connected to server 
+     socket.emit('getClientList');            //get all devices connected to server 
      socket.emit('addnewpeer',peer.id);   //add this device to the server client list
      document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id; //display peer.id on page
      change_name();  //ask user to change alias name of this device
-     DetectRTC.load(loadDetectRTC);
+     DetectRTC.load(loadDetectRTC);   //Load DetectRTC to find device characteristics
   });
+
+  //grabs device characteristics and sends to server.
   function getDeviceCharacteristics()
 	{
-	   
-
-		 var table = document.getElementById("alias_list");
-		 var rowIndex= table.rows.length;
-		 var myrow = document.getElementById("alias_list").rows[rowIndex-1];
-
-		 hasWebcam =myrow.insertCell(1);
-		 hasMicrophone =myrow.insertCell(2);
-		 deviceBrowser =myrow.insertCell(3);
-		 deviceOS= myrow.insertCell(4);
-
 		 if(DetectRTC.hasWebcam){
-		 	hasWebcam.innerHTML= "Has Camera\n"+myWidth+"x"+myHeight;
+      myCamera= "Has Camera\n"+myWidth+"x"+myHeight;
+       DeviceCharacteristics['Camera']=myCamera;
 		 }
+     else{DeviceCharacteristics['Camera']="No Camera"; }
 		 if(DetectRTC.hasMicrophone){
-		 	hasMicrophone.innerHTML = "Has Microphone"
+      myMicrophone ="Has Microphone";
+      DeviceCharacteristics['Microphone']= myMicrophone;
 		 }
-		 deviceOS.innerHTML= DetectRTC.osName + ": " + DetectRTC.osVersion;
-		 deviceBrowser.innerHTML = DetectRTC.browser.name + ": " + DetectRTC.browser.version;
-		 
+     else{DeviceCharacteristics['Camera']="No Microphone"; }
+     myOs = DetectRTC.osName + ": " + DetectRTC.osVersion;
+     DeviceCharacteristics['OS']= myOs;
+     myBrowser =  DetectRTC.browser.name + ": " + DetectRTC.browser.version;
+     DeviceCharacteristics['Browser']= myBrowser;
+     socket.emit("gotDeviceInfo",DeviceCharacteristics);
+		 console.log (myOs+" "+myBrowser + " "+ myMicrophone +" "+myCamera);
 	}
+  
+  //DetectRTC must be loaded before methods can be called, getUserMedia must also be called once, before DetectRTC can work
   function loadDetectRTC()
   {
-  	    navigator.mediaDevices.getUserMedia(constraints)
+    navigator.mediaDevices.getUserMedia(constraints)
 	  .then(function(stream) {
   	 var video= document.getElementById("myVideo");
         video.srcObject  = stream;
@@ -166,7 +175,8 @@ socket.on('name_result',function(result){
           myHeight=video.videoHeight;
           myWidth=video.videoWidth;
               };
-	  	// getDeviceCharacteristics();
+	  	
+      //Wait a second while height and video is grabbed from the html video object, then close the stream and grab device characteristics
 	  	 setTimeout(function e(){
 	  	 	if (stream) {
 		        stream.getTracks().forEach(function (track) {
@@ -175,28 +185,15 @@ socket.on('name_result',function(result){
 	        }; 
 	         getDeviceCharacteristics();
 	    }, 1000);
- 		 
 	  })
 	  .catch(function(err) { console.log(err.name + ": " + err.message); });
-	  //console.log(myHeight);
-    	/* navigator.mediaDevices.getUserMedia(constraints)
-		  .then(function(stream) {
-		        /*if (stream) {
-		        stream.getTracks().forEach(function (track) {
-		            track.stop();
-		        });
-		    }
-		    getDeviceCharacteristics();
-		  })
-		  .catch(function(err) { console.log(err.name + ": " + err.message); });	  */
   }
 
-	
-   
 socket.on('get_resolution',function(peerid){
     //send my resoltuion to the peer with peerid
     socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth});
 });
+
 socket.on('here_is_resolution',function(data){
  //DONT WORRY ABOUT THIS PART. THIS IS BEING FIXED BY ARJUN. IT IS FOR MULTIPLE STREAMS TO BE RUN
               var table=document.getElementById("video_table");
