@@ -66,6 +66,13 @@ var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
         io.emit("add",clients[socket.id]);
     });
 
+     socket.on('gotDeviceInfo', function (DeviceCharacteristics) {
+        clients[socket.id]["Camera"]=DeviceCharacteristics.Camera;
+        clients[socket.id]["Microphone"]=DeviceCharacteristics.Microphone;
+        clients[socket.id]["Browser"]=DeviceCharacteristics.Browser;
+        clients[socket.id]["OS"]=DeviceCharacteristics.OS;
+        io.emit("update",clients[socket.id]);
+    });
 //when a peer changes its alias name on the network
     socket.on('editname', function (name) {
         clients[socket.id]["peername"]=name;
