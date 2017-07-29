@@ -1,228 +1,348 @@
-#!/usr/bin/env node
+<!DOCTYPE html>
+<html>
+<head>
+  <title>peer</title>
+  <link rel='stylesheet' href='/stylesheets/style.css'>
+</head>
+<body>
+  <div><h1 class="aliasname" id="alias_id" onclick="change_name()"></h1></div>
+  <video id="myVideo" class="myVideo"></video>
+  <div class="dropdown">
+    <h2 style="color:white; text-align: center;">Alias List</h2>
+    <div class="dropdown-content">
+      <table style="border-collapse: collapse; width:100%;" id="alias_list">
+        <tr><th id = "peers" class="aliaslist">Peer Name</th> <th id = "attrCell">Attributes</th></tr>
 
-/**
- * Module dependencies.
- */
-/*dont worry about this section for now*/
-var app = require('../app');
-var debug = require('debug')('myapp:server');
-//var http = require('http');
+      </table>
+    </div>
+  </div>
+  <div class="videos"> 
+    <table id="video_table" class="videos">
 
+    </table>
+  </div>
+  <div>
+    <label class="switch">
+  <input type="checkbox" value = 'on' id ='blocker' onclick = 'blockMedia()'>
+  <span class="slider round"></span>
+</label>
+</div>
+</body>
+</html>
 
-//https code
-var https = require('https');
-var fs = require('fs');
-var options = {
-  key: fs.readFileSync('key.pem'),
-  cert: fs.readFileSync('cert.pem')
+<script src="/javascripts/peer.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/javascripts/DetectRTC.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script >
+
+/*
+
+Trying to crreate slie button to block calls
+*/
+//get the host (server) ip address
+var host= <%- JSON.stringify(host) %>
+//make a new peer on the peerjs server vs port 9000
+var peer = new Peer({host: host, port: 9000, path: '/', debug: 3});
+
+//socket functions
+var socket = io.connect();
+//var peer_id;  //i dont think we need this?
+
+//////////////////////my video section
+//fix later to getusermedia.js for all devices to work if they do not support webrtc
+navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia ||    
+navigator.mediaDevices.webkitGetUserMedia ||
+navigator.mediaDevices.mozGetUserMedia;
+var constraints = { audio: true, video:{ facingMode: "environment" }} ; //send only video, not audio. will be fixed later to be options for user to send one or both.
+var myHeight;
+var myWidth;
+var myClient;
+/*  navigator.mediaDevices.getUserMedia(constraints)
+.then(function(stream) {
+var video= document.getElementById("myVideo");
+video.srcObject  = stream;
+video.onloadedmetadata = function(e) {
+myHeight=video.videoHeight;
+myWidth=video.videoWidth;
 };
-var server = https.createServer(options, app
-/*  function (req, res) {
-  res.writeHead(200);
-  res.end("hello world\n");
-}*/
-).listen(80);
-var io = require('socket.io')(server);
-/*code for peerjs with existing express app*/
-/*********************************************/
-var peerhttps = require('https');
-var peerexpress = require('express');
-var peerapp = peerexpress();
-var ExpressPeerServer = require('peer').ExpressPeerServer;
-var peeroptions = {
-  sslkey: fs.readFileSync('./key.pem'),
-  sslcert: fs.readFileSync('./cert.pem')
-};
+})
+.catch(function(err) { console.log(err.name + ": " + err.message); });*/
+var myCamera;
+var myMicrophone;
+var myOs;
+var myBrowser;
+var DeviceCharacteristics={};
+var attributeRowId;
+var myClient;
+var blocking= false;
 
-var serverlisten = peerhttps.createServer(options, peerapp).listen(9000);
-peerapp.get('/api', function(req, res, next) {
-    console.log("get /")
-    res.send('peer server running');
+var id_of_caller; //must fix this later. horrible solution
+//////////////////////
+
+//when new device connects, add it to the alias list, which is in the form of a table. The function receive an object called client and has the value {"peername":new_client_name, "peerid":new_client_id}
+socket.on('add',function(client){
+  var table = document.getElementById("alias_list");
+  var row = table.insertRow(table.rows.length);
+  myClient = client;
+  var atrow = table.insertRow(table.rows.length);
+  attributeRowId = client['peerid']+"at";
+  client['AttributeRow']=attributeRowId;
+  atrow.setAttribute("id", client['peerid']+"at")
+  atrow.setAttribute("class", "attributeRow");
+  row.setAttribute("id",client['peerid']) 
+  row.setAttribute("class","aliaslist")     
+/*var cell1 = row.insertCell(0);
+cell1.innerHTML = client['peername'];
+cell1.onclick = function() { //when the cell in the table with this peername is clicked, run this function
+  //here we send the peerid of the peer we want a stream from to the server, and the server tells that remote device to send its stream to my peerid.*/
+  
+  var peernameCell = row.insertCell(0);
+  var attributeToggle =row.insertCell(1);
+  attributeToggle.innerHTML = "+";
+  var cameraCell= atrow.insertCell(0);
+  var micCell= atrow.insertCell(1);
+  var browserCell= atrow.insertCell(2);
+  var osCell= atrow.insertCell(3);
+  peernameCell.innerHTML = client['peername'];
+  cameraCell.innerHTML =client['Camera'];
+  micCell.innerHTML =client['Microphone'];
+  browserCell.innerHTML =client['Browser'];
+  osCell.innerHTML =client['OS'];
+
+  
+  peernameCell.onclick = function() {
+    if(client['Blocking']==false){
+      socket.emit('give_me_resolution',client['peerid']);//get video resolution of the peer clicked
+      id_of_caller=client['peerid'];
+      //console.log("wuuhh: "+myClient["Camera"]);
+    }
+    else
+      alert('Peer is refusing calls');
+};
+attributeToggle.onclick = function(){
+  console.log("Here:"+attributeRowId);
+  $("#"+client['AttributeRow']).toggle();
+  if(attributeToggle.innerHTML == "-")
+    attributeToggle.innerHTML = "+";
+  else
+    attributeToggle.innerHTML = "-"
+}
+cameraCell.onclick = function(){
+// Add Code to Only do video call
+}
+}); 
+
+//updating name of existing peer in the table
+socket.on('update',function(client){
+
+  atRow = document.getElementById(client['peerid']+"at");
+  document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
+  document.getElementById(client['peerid']+"at").cells[0].innerHTML=client['Camera'];
+  document.getElementById(client['peerid']+"at").cells[1].innerHTML=client['Microphone']
+  document.getElementById(client['peerid']+"at").cells[2].innerHTML=client['Browser'];
+  document.getElementById(client['peerid']+"at").cells[3].innerHTML=client['OS'];
+  $(".attributeRow").hide();
+  //myClient = client;
+}); 
+
+//removing peer alias list table when the device leaves the website and is removed from server
+socket.on('remove',function(client){
+  var rowIndex = document.getElementById(client['peerid']).rowIndex;
+  var table = document.getElementById("alias_list");
+  table.deleteRow(rowIndex);
 });
 
-peerServer = ExpressPeerServer(serverlisten, peeroptions)
+//after the server checks if an enterered alias name is valid or not, this function obtains the result. Result = {'name':alias_name_entered_by_user, 'exists':true_or_false}. If alias name already exists for another connected device, server returns true, otherwise false.
+socket.on('name_result',function(result){
+if(result['exists']==false) //if alias name is not taken by another device
+{
+socket.emit('editname', result['name']); //change the display name in the alias table
+document.getElementById("alias_id").innerHTML ="Alias Name: "+result['name'];    //change displayed name on page
+}
+else    //if aliass name is taken
+{
+  alert("Alias name exists.");
+change_name();  //ask user to pick a new alias name
+}
+});
 
-peerapp.use('/', peerServer);
+//function to change alias name
+function change_name (){
+    var exists=true; //boolean variable to keep loop repeating until valid input is read.
+    while(exists==true){
+      var name = prompt("Please enter an Alias Name for this device:", peer.id);
+      if (name==null||/^\s/.test(name)==true||name=="") {               
+    //checks if name entered is valid. No spaces before, and no blank entries are allowed           
+    alert("Alias name cannot be blank or have spaces in front");
+    }
+    else {
+    //if valid input is read, stop the loop and send the name to the server to be checked if it is taken by another device already or not.
+    exists=false;
+    socket.emit('check_peer_name',name);
+    }
+  }
+}
+function blockMedia()
+{
+  //alert('Blocking Connections');
+  //$('#blocker').value = 'off';
+  //document.getElementById('blocker').value='off';
+  //myClient['Blocking']= true;
+  if(blocking == false)
+  {
+    alert('Blocking Connections');
+      blocking = true;
+  }
+  else
+  {
+      alert("Connections Open");
+      blocking = false;
+  }
+  socket.emit('blockingRequest', blocking);
+  
+  //$('#').disabled;
+}
 
+//this runs right when a peer connects to the webpage
+peer.on('open', function(){
+socket.emit('getClientList');    //get all devices connected to server 
+socket.emit('addnewpeer',peer.id);   //add this device to the server client list
+document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id; //display peer.id on page
+change_name();  //ask user to change alias name of this device
 
-/////////////////////////////////////////////////////////////////////
-/*THIS IS THE SECTION YOU SHOULD UNDERSTAND*/
+DetectRTC.load(loadDetectRTC);   //Load DetectRTC to find device characteristics
+});
 
-var clients={};         //holds objvet made of client peer.id and client peername. the key is the socket.id
-var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
-  io.sockets.on('connection', function (socket) {
-    
-//send peerid and peername of all connected devices to a device that is just added to the network
-    socket.on('getClientList',function(){
-      for(var key in clients){
-      socket.emit("add",clients[key]);
-      }
-    });
+/*justin*/
+//grabs device characteristics and sends to server.
+function getDeviceCharacteristics()
+{
+  if(DetectRTC.hasWebcam){
+    myCamera= "Has Camera\n"+myWidth+"x"+myHeight;
+    DeviceCharacteristics['Camera']=myCamera;
+  }
+  else{DeviceCharacteristics['Camera']="No Camera"; }
+  if(DetectRTC.hasMicrophone){
+    myMicrophone ="Has Microphone";
+    DeviceCharacteristics['Microphone']= myMicrophone;
+  }
+  else{DeviceCharacteristics['Camera']="No Microphone"; }
+  myOs = DetectRTC.osName + ": " + DetectRTC.osVersion;
+  DeviceCharacteristics['OS']= myOs;
+  myBrowser =  DetectRTC.browser.name + ": " + DetectRTC.browser.version;
+  DeviceCharacteristics['Browser']= myBrowser;
+  socket.emit("gotDeviceInfo",DeviceCharacteristics);
+  console.log (myOs+" "+myBrowser + " "+ myMicrophone +" "+myCamera);
+}
 
-//when a new peer connects to network
-    socket.on('addnewpeer', function (peerid) {
-        clients[socket.id]={"peerid":peerid,"peername":peerid};
-        peerid_to_socketid[peerid]=socket.id;
-        io.emit("add",clients[socket.id]);
-    });
+//DetectRTC must be loaded before methods can be called, getUserMedia must also be called once, before DetectRTC can work
+function loadDetectRTC()
+{
+  navigator.mediaDevices.getUserMedia(constraints)
+  .then(function(stream) {
+    var video= document.getElementById("myVideo");
+    video.srcObject  = stream;
+    video.onloadedmetadata = function(e) {
+      myHeight=video.videoHeight;
+      myWidth=video.videoWidth;
+    };
 
-     socket.on('gotDeviceInfo', function (DeviceCharacteristics) {
-        clients[socket.id]["Camera"]=DeviceCharacteristics.Camera;
-        clients[socket.id]["Microphone"]=DeviceCharacteristics.Microphone;
-        clients[socket.id]["Browser"]=DeviceCharacteristics.Browser;
-        clients[socket.id]["OS"]=DeviceCharacteristics.OS;
-        io.emit("update",clients[socket.id]);
-    });
-//when a peer changes its alias name on the network
-    socket.on('editname', function (name) {
-        clients[socket.id]["peername"]=name;
-        io.emit("update",clients[socket.id]);
-    });
-
-//when client disconnects from network
-    socket.on('disconnect',function(){
-      io.emit("remove",clients[socket.id]);   //tell all clients to remove the client from their alias tables
-      delete clients[socket.id];    //remove the saved peerid and peername
+//Wait a second while height and video is grabbed from the html video object, then close the stream and grab device characteristics
+setTimeout(function e(){
+  if (stream) {
+    stream.getTracks().forEach(function (track) {
+      track.stop();
     })
+  }; 
+  getDeviceCharacteristics();
+}, 1000);
+})
+  .catch(function(err) { console.log(err.name + ": " + err.message); });
+}
 
-//checks if an entered alias name is already taken by another device. 
-socket.on('check_peer_name',function(name){
-      var exists=false;   
-      for (var key in clients)
-      {
-        if(clients[key]['peername']==name&&clients[key]['peerid']!=name)  //if name is taken by another client
-        {
-          exists=true;
-          break;  //stop searching the client list and break out of for loop
-        }
-      }
-      var obj={"name":name, "exists":exists} 
-      socket.emit('name_result',obj); //tell the peer that the name they entered is taken or not
-    });
+/*justin*/
 
-//when a local device requests a remote device stream, the server send the peerid of local device to the 
-// remote device so that it can place a call and send its stream to the local device.
-//Function receives the peerid of the remote device that the local device wants a stream from
-    socket.on('force_call',function(peerid){  
-      var socketid=peerid_to_socketid[peerid];  //look up socket id of the remove device based on its peerid
+socket.on('get_resolution',function(peerid){
+//send my resoltuion to the peer with peerid
+socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth});
+});
+socket.on('here_is_resolution',function(data){
+  var table=document.getElementById("video_table");
+  var rows=table.rows;
+//if(rows.length>0)
+// var maxwidth=rows[0].offsetWidth;
+var videoboxid="vb_"+data['peerid'];
+//iterate through all rows. see if any have empty space
+var inserted=false;
 
-      //emit to the remote device only, and tell it to call the local device by passing it the local device
-      //peerid
-      io.sockets.connected[socketid].emit('make_call',clients[socket.id]['peerid']);
-    });
+for(var x=0;x<rows.length;x++)
+{ 
+    var num_of_cells=rows[x].cells.length;
+  //find an empty cell, checks its size and see if stream can be placed in that cell
+  for( var y=0;y<num_of_cells;y++){
+    if(rows[x].cells[y].innerHTML===''&&rows[x].cells[y].offsetWidth>=(data['width']/2)&&rows[x].cells[y].offsetHeight>=(data['height']/2)){
+      rows[x].cells[y].innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video>";
+      inserted=true;
+      break;
+    }
 
-    socket.on('give_me_resolution',function(peerid){
-        var socketid=peerid_to_socketid[peerid]; //get socket id we want the resolution from
-        io.sockets.connected[socketid].emit('get_resolution',clients[socket.id]['peerid']);
-    });
-    socket.on('my_resolution',function(data){
-      var socketid=peerid_to_socketid[data['peerid']]; //get socket of peer that requested the resolution
-      var obj={'height':data['height'],'width':data['width'],'peerid':clients[socket.id]['peerid']};
-      io.sockets.connected[socketid].emit('here_is_resolution',obj);
-    })
-  });
-
-/***************************************************/
-
-
-/**
- * Get port from environment and store in Express.
- */
-
-//var port = normalizePort(process.env.PORT || '3000');
-var port = '80';
-app.set('port', port);
-
-/**
- * Create HTTP server.
- */
-
-//var server = http.createServer(app);
-/**
- * Listen on provided port, on all network interfaces.
- */
-
-//server.listen(port);
-  var os = require('os');
-
-var interfaces = os.networkInterfaces();
-var addresses = [];
-interfaceloop: for (var k in interfaces) {
-    for (var k2 in interfaces[k]) {
-        var address = interfaces[k][k2];
-        if (address.family === 'IPv4' && !address.internal) {
-            addresses.push(address.address);
-            break interfaceloop;
-        }        
     }
 }
-var nodeIP = String(addresses);
+  if(inserted==false)
+  {
+    var newRow=table.insertRow(rows.length);
+    var newCell=newRow.insertCell(0);          
+    newCell.setAttribute("width",(data['width']/2));
+    newCell.innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video>";
+  }
+  socket.emit('force_call',data['peerid']);
 
-
-server.listen(port,nodeIP, function()
-{
-  console.log("Server running on " +nodeIP +":" +port);
+//<video id="videobox" class="peerVideo"></video>
 });
-server.on('error', onError);
-server.on('listening', onListening);
+//this is run when the server gets a notification that a device is requesting this devices stream. The server sends a 'make_call' signal to this device. The 'peer_id' received in the function below is the peer.id of the device that made the request for this peers stream.
+socket.on('make_call',function(peer_id){
 
-/**
- * Normalize a port into a number, string, or false.
- */
+  navigator.mediaDevices.getUserMedia(constraints)
+  .then(function(stream) {
+    var video= document.getElementById("myVideo");
+    video.srcObject  = stream;
+    video.onloadedmetadata = function(e) {
+      console.log(video.videoHeight)
+    };
+    peer.call(peer_id, stream);
+  })
+  .catch(function(err) { console.log(err.name + ": " + err.message); });
+//make a call to the peer that requested this devices stream, and send the stream to them.
 
-function normalizePort(val) {
-  var port = parseInt(val, 10);
+});
 
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
 
-  if (port >= 0) {
-    // port number
-    return port;
-  }
+//this event is run when a stream is being sent to this device by another peer on the network.
+peer.on('call', function(call) {
+  var video= document.getElementById("vb_"+id_of_caller);
 
-  return false;
-}
+call.answer(); // Answer the call with an A/V stream. 
+call.on('stream', function(mediaConnection) {
 
-/**
- * Event listener for HTTP server "error" event.
- */
+//place the stream on to the page and once its meta data is loaded, play the stream
 
-function onError(error) {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
+video.srcObject  = mediaConnection;
 
-  var bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
+video.onloadedmetadata = function(e) {
+  video.play();
+  };
+}); 
 
-  // handle specific listen errors with friendly messages
-  switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
-      process.exit(1);
-      break;
-    case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
-      process.exit(1);
-      break;
-    default:
-      throw error;
-  }
-}
+call.on('close',function(){
+  var cell=video.parentNode;
+  var row=cell.parentNode;
+  var tableBody=row.parentNode;
+  tableBody.removeChild(row);       
+//parent.removeChild(video);
 
-/**
- * Event listener for HTTP server "listening" event.
- */
+  })
+});
 
-function onListening() {
-  var addr = server.address();
 
-  var bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
-  debug('Listening on ' + bind);
-}
+</script>
