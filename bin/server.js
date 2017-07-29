@@ -61,13 +61,15 @@ var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
 
 //when a new peer connects to network
     socket.on('addnewpeer', function (peerid) {
-        clients[socket.id]={"peerid":peerid,"peername":peerid};
+        clients[socket.id]={"peerid":peerid,"peername":peerid,"blocking":false};
         peerid_to_socketid[peerid]=socket.id;
         io.emit("add",clients[socket.id]);
     });
 
      socket.on('gotDeviceInfo', function (DeviceCharacteristics) {
         clients[socket.id]["Camera"]=DeviceCharacteristics.Camera;
+        clients[socket.id]["Height"]=DeviceCharacteristics.Height;
+        clients[socket.id]["Width"]=DeviceCharacteristics.Width;
         clients[socket.id]["Microphone"]=DeviceCharacteristics.Microphone;
         clients[socket.id]["Browser"]=DeviceCharacteristics.Browser;
         clients[socket.id]["OS"]=DeviceCharacteristics.OS;
@@ -88,16 +90,30 @@ var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
 //checks if an entered alias name is already taken by another device. 
 socket.on('check_peer_name',function(name){
       var exists=false;   
-      for (var key in clients)
-      {
-        if(clients[key]['peername']==name&&clients[key]['peerid']!=name)  //if name is taken by another client
+      if(clients[socket.id]['peername']==name||clients[socket.id]['peerid']==name)
         {
-          exists=true;
-          break;  //stop searching the client list and break out of for loop
+          var obj={"name":name, "exists":exists} 
+          socket.emit('name_result',obj);
         }
-      }
-      var obj={"name":name, "exists":exists} 
-      socket.emit('name_result',obj); //tell the peer that the name they entered is taken or not
+      else
+      {
+        for (var key in clients)
+        {
+          if(clients[key]['peername']==name||clients[key]['peerid']==name)  //if name is taken by another client
+          {
+            exists=true;
+            break;  //stop searching the client list and break out of for loop
+          }
+        }
+        var obj={"name":name, "exists":exists} 
+        socket.emit('name_result',obj); //tell the peer that the name they entered is taken or not
+    }
+    });
+
+socket.on('block_access', function (block) {
+        clients[socket.id]["blocking"]=block;
+        console.log(clients[socket.id]["blocking"]);
+        io.emit("update",clients[socket.id]);
     });
 
 //when a local device requests a remote device stream, the server send the peerid of local device to the 
