@@ -6,16 +6,17 @@
   </head>
   <body>
     <div><h1 class="aliasname" id="alias_id" onclick="change_name()"></h1></div>
+    <button type="button" onclick="block_access()">Click Me!</button>
     <video id="myVideo" class="myVideo"></video>
     <div class="dropdown">
       <h2 style="color:white; text-align: center;">Alias List</h2>
         <div class="dropdown-content">
              <table style="border-collapse: collapse; width:100%;" id="alias_list">
-                <tr><th class="aliaslist">Peer Name</th></tr>
+                <tr><th id = "peers" class="aliaslist">Peer Name</th> <th>Available</th><th id = "attrCell">Attributes</th></tr>
               </table>
         </div>
     </div>
-    <div class="videos"> 
+    <div id="videoTableDiv" class="videos"> 
       <table id="video_table" class="videos">
           
       </table>
@@ -27,6 +28,8 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="/javascripts/DetectRTC.js"></script>
 
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
 <script >
   
   //get the host (server) ip address
@@ -36,7 +39,6 @@
 
   //socket functions
   var socket = io.connect();
-  //var peer_id;  //i dont think we need this?
 
 //////////////////////my video section
   //fix later to getusermedia.js for all devices to work if they do not support webrtc
@@ -46,21 +48,12 @@
   var constraints = { audio: true, video:{ facingMode: "environment" }} ; //send only video, not audio. will be fixed later to be options for user to send one or both.
   var myHeight;
   var myWidth;
-  /*  navigator.mediaDevices.getUserMedia(constraints)
-  .then(function(stream) {
-        var video= document.getElementById("myVideo");
-        video.srcObject  = stream;
-        video.onloadedmetadata = function(e) {
-          myHeight=video.videoHeight;
-          myWidth=video.videoWidth;
-              };
-  })
-  .catch(function(err) { console.log(err.name + ": " + err.message); });*/
-var myCamera;
+  var myCamera;
   var myMicrophone;
   var myOs;
   var myBrowser;
   var DeviceCharacteristics={};
+  var attributeRowId;
 
 var id_of_caller; //must fix this later. horrible solution
 //////////////////////
@@ -69,37 +62,71 @@ var id_of_caller; //must fix this later. horrible solution
   socket.on('add',function(client){
       var table = document.getElementById("alias_list");
       var row = table.insertRow(table.rows.length);
+
+        var atrow = table.insertRow(table.rows.length);
+   attributeRowId = client['peerid']+"at";
+    client['AttributeRow']=attributeRowId;
+   atrow.setAttribute("id", client['peerid']+"at")
+   atrow.setAttribute("class", "attributeRow");
+
+
+
+
       row.setAttribute("id",client['peerid']) 
       row.setAttribute("class","aliaslist")     
-      /*var cell1 = row.insertCell(0);
-      cell1.innerHTML = client['peername'];
-      cell1.onclick = function() { //when the cell in the table with this peername is clicked, run this function
-        //here we send the peerid of the peer we want a stream from to the server, and the server tells that remote device to send its stream to my peerid.*/
+      var peernameCell = row.insertCell(0);
+      var peerblockCell = row.insertCell(1);
+      /*var cameraCell= row.insertCell(2);
+      var micCell= row.insertCell(3);
+      var browserCell= row.insertCell(4);
+      var osCell= row.insertCell(5);*/
+            var attributeToggle =row.insertCell(2);
+   attributeToggle.innerHTML = "+";
+   var cameraCell= atrow.insertCell(0);
+   var micCell= atrow.insertCell(1);
+  var browserCell= atrow.insertCell(2);
+   var osCell= atrow.insertCell(3);
+      
 
-        var peernameCell = row.insertCell(0);
-      var cameraCell= row.insertCell(1);
-      var micCell= row.insertCell(2);
-      var browserCell= row.insertCell(3);
-      var osCell= row.insertCell(4);
+      peerblockCell.innerHTML = client['blocking'];
       peernameCell.innerHTML = client['peername'];
       cameraCell.innerHTML =client['Camera'];
       micCell.innerHTML =client['Microphone'];
       browserCell.innerHTML =client['Browser'];
-     osCell.innerHTML =client['OS'];
+      osCell.innerHTML =client['OS'];
+
 
       peernameCell.onclick = function() {
+      if(peerblockCell.innerHTML=="false")
+      {
        socket.emit('give_me_resolution',client['peerid']);//get video resolution of the peer clicked
        id_of_caller=client['peerid'];
+      }
+      else
+      {
+        alert("Client '"+client['peername']+"' is blocking access.");
+      }
+
       };
+            attributeToggle.onclick = function(){
+   console.log("Here:"+attributeRowId);
+   $("#"+client['AttributeRow']).toggle();
+   if(attributeToggle.innerHTML == "-")
+     attributeToggle.innerHTML = "+";
+   else
+    attributeToggle.innerHTML = "-"
+ };
  }); 
 
   //updating name of existing peer in the table
   socket.on('update',function(client){
+      document.getElementById(client['peerid']).cells[1].innerHTML=client['blocking'];
       document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
-      document.getElementById(client['peerid']).cells[1].innerHTML=client['Camera'];
-      document.getElementById(client['peerid']).cells[2].innerHTML=client['Microphone'];
-      document.getElementById(client['peerid']).cells[3].innerHTML=client['Browser'];
-      document.getElementById(client['peerid']).cells[4].innerHTML=client['OS'];
+      document.getElementById(client['peerid']+"at").cells[0].innerHTML=client['Camera'];
+      document.getElementById(client['peerid']+"at").cells[1].innerHTML=client['Microphone'];
+      document.getElementById(client['peerid']+"at").cells[2].innerHTML=client['Browser'];
+      document.getElementById(client['peerid']+"at").cells[3].innerHTML=client['OS'];
+      $(".attributeRow").hide();
 
  }); 
 
@@ -150,7 +177,17 @@ socket.on('name_result',function(result){
 
      DetectRTC.load(loadDetectRTC);   //Load DetectRTC to find device characteristics
   });
-
+  var bool=false;
+  function block_access(){
+    if(bool==false)
+    {
+      bool=true;
+    }
+    else{
+      bool=false;
+    }
+    socket.emit('block_access',bool);
+  }
   /*justin*/
   //grabs device characteristics and sends to server.
   function getDeviceCharacteristics()
@@ -158,19 +195,22 @@ socket.on('name_result',function(result){
      if(DetectRTC.hasWebcam){
       myCamera= "Has Camera\n"+myWidth+"x"+myHeight;
        DeviceCharacteristics['Camera']=myCamera;
+       DeviceCharacteristics['Height']=myHeight;
+       DeviceCharacteristics['Width']=myWidth;
      }
      else{DeviceCharacteristics['Camera']="No Camera"; }
+
      if(DetectRTC.hasMicrophone){
       myMicrophone ="Has Microphone";
       DeviceCharacteristics['Microphone']= myMicrophone;
      }
      else{DeviceCharacteristics['Camera']="No Microphone"; }
+
      myOs = DetectRTC.osName + ": " + DetectRTC.osVersion;
      DeviceCharacteristics['OS']= myOs;
      myBrowser =  DetectRTC.browser.name + ": " + DetectRTC.browser.version;
      DeviceCharacteristics['Browser']= myBrowser;
      socket.emit("gotDeviceInfo",DeviceCharacteristics);
-     console.log (myOs+" "+myBrowser + " "+ myMicrophone +" "+myCamera);
   }
   
   //DetectRTC must be loaded before methods can be called, getUserMedia must also be called once, before DetectRTC can work
@@ -180,20 +220,18 @@ socket.on('name_result',function(result){
     .then(function(stream) {
      var video= document.getElementById("myVideo");
         video.srcObject  = stream;
-        video.onloadedmetadata = function(e) {
+        video.onloadedmetadata = function(e) 
+        {
           myHeight=video.videoHeight;
           myWidth=video.videoWidth;
-              };
-      
-      //Wait a second while height and video is grabbed from the html video object, then close the stream and grab device characteristics
-       setTimeout(function e(){
-        if (stream) {
-            stream.getTracks().forEach(function (track) {
-                track.stop();
-              })
-          }; 
-           getDeviceCharacteristics();
-      }, 1000);
+          getDeviceCharacteristics();
+          if (stream) {
+              stream.getTracks().forEach(function (track) {
+                  track.stop();
+                })
+            }
+        };
+          
     })
     .catch(function(err) { console.log(err.name + ": " + err.message); });
   }
@@ -207,32 +245,32 @@ socket.on('get_resolution',function(peerid){
 socket.on('here_is_resolution',function(data){
               var table=document.getElementById("video_table");
               var rows=table.rows;
-              //if(rows.length>0)
-               // var maxwidth=rows[0].offsetWidth;
               var videoboxid="vb_"+data['peerid'];
-              //iterate through all rows. see if any have empty space
-              var inserted=false;
-              
+              var spot_found=false;
               for(var x=0;x<rows.length;x++)
-              { 
-                var num_of_cells=rows[x].cells.length;
-                //find an empty cell, checks its size and see if stream can be placed in that cell
-                for( var y=0;y<num_of_cells;y++){
-                  if(rows[x].cells[y].innerHTML===''&&rows[x].cells[y].offsetWidth>=(data['width']/2)&&rows[x].cells[y].offsetHeight>=(data['height']/2)){
-                     rows[x].cells[y].innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video>";
-                     inserted=true;
-                     break;
-                  }
-
+              {
+                rowFreeSpace=rows[x].getAttribute("FreeSpace");
+                if(rowFreeSpace>=(data['width']/2))
+                {
+                  var num_of_cells=rows[x].cells.length;
+                  rows[x].setAttribute("FreeSpace",(rowFreeSpace-data['width']/2));
+                  var newCell=rows[x].insertCell(num_of_cells);
+                  newCell.setAttribute("width",(data['width']/2));
+                  newCell.innerHTML="<div class='peerVideo'><video id='"+videoboxid+"' class='peerVideo'></video></div>";
+                  spot_found=true;
                 }
-        }
-        if(inserted==false)
-        {
-          var newRow=table.insertRow(rows.length);
-          var newCell=newRow.insertCell(0);          
-          newCell.setAttribute("width",(data['width']/2));
-          newCell.innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video>";
-        }
+                
+              }
+              if(spot_found==false)
+              {
+                var rowWidth=document.getElementById("videoTableDiv").offsetWidth;
+                var newRow=table.insertRow(rows.length);
+                newRow.setAttribute("FreeSpace",(rowWidth-data['width']/2));
+                var newCell=newRow.insertCell(0);          
+                newCell.setAttribute("width",(data['width']/2));
+                newCell.innerHTML="<div class='peerVideo'><video id='"+videoboxid+"' class='peerVideo'></video></div>";
+              }
+        
                 socket.emit('force_call',data['peerid']);
 
         //<video id="videobox" class="peerVideo"></video>
@@ -276,9 +314,15 @@ socket.on('make_call',function(peer_id){
         var cell=video.parentNode;
         var row=cell.parentNode;
         var tableBody=row.parentNode;
-        tableBody.removeChild(row);       
-         //parent.removeChild(video);
-
+        if(row.cells.length==1)
+          tableBody.removeChild(row);
+        else
+        {
+        var cellWidth=cell.getAttribute('Width');
+        var rowFreeSpace=row.getAttribute("FreeSpace");
+        row.setAttribute("FreeSpace",cellWidth+rowFreeSpace);
+        row.removeChild(cell);       
+        }
       })
 });
 
