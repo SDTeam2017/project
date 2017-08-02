@@ -1,13 +1,13 @@
 /*Background color and font for all pages*/
     html{
-    	position: absolute;
+        position: absolute;
         top:0;
         bottom:0;
         left:0;
         right:0;
     }
     body {
-      	font: 14px "Arial";
+        font: 14px "Arial";
         margin: 0;
         background: black;
         position: absolute;
@@ -18,15 +18,15 @@
     }
 
     video.peerVideo{
-    	width: 100%;
-    	height: auto; 
+        width: 100%;
+        height: auto; 
     }
     video.myVideo{
             
-            border: 3px solid #73AD21;
+            /*border: 3px solid #73AD21;*/
             height: 0%;
             width:0%;
-            right:20%;
+            right:0%;
             top:0%;
             position: absolute;
 
@@ -48,17 +48,17 @@
     }
 
     p{
-    	color: white;
+        color: white;
     }
 
     h1.aliasname {
-    	position:fixed;
-    	left: 0;
-    	top: 0;
-    	color: white;
+        position:fixed;
+        left: 0;
+        top: 0;
+        color: white;
     }
     h1.aliasname:hover{
-    	color: red;
+        color: red;
         cursor:pointer
     }
 
@@ -96,4 +96,73 @@ tr.aliaslist:hover{
  background:red;
  cursor:pointer
 }
+
+.dropdown-submenu {
+    position: relative;
+}
+
+.dropdown-submenu .dropdown-menu {
+    top: 0;
+    left: 100%;
+    margin-top: -1px;
+}
     
+.attributeRow{
+
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 17px;
+}
+
+.switch input {display:none;}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 13px;
+  width: 13px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(13px);
+  -ms-transform: translateX(13px);
+  transform: translateX(13px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
