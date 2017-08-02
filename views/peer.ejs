@@ -6,13 +6,18 @@
   </head>
   <body>
     <div><h1 class="aliasname" id="alias_id" onclick="change_name()"></h1></div>
-    <button type="button" onclick="block_access()">Click Me!</button>
+    <div>
+      <label class="switch">
+      <input type="checkbox" value = 'on' id ='blocker' onclick = 'block_access()'>
+      <span class="slider round"></span>
+      </label>
+    </div>
     <video id="myVideo" class="myVideo"></video>
     <div class="dropdown">
       <h2 style="color:white; text-align: center;">Alias List</h2>
         <div class="dropdown-content">
              <table style="border-collapse: collapse; width:100%;" id="alias_list">
-                <tr><th id = "peers" class="aliaslist">Peer Name</th> <th>Available</th><th id = "attrCell">Attributes</th></tr>
+                <tr><th id = "peers" class="aliaslist">Peer Name</th> <th class="aliaslist">Available</th><th class="aliaslist" id = "attrCell">Attributes</th></tr>
               </table>
         </div>
     </div>
@@ -28,7 +33,7 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="/javascripts/DetectRTC.js"></script>
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="/javascripts/jquery.js"></script>
 
 <script >
   
@@ -54,7 +59,8 @@
   var myBrowser;
   var DeviceCharacteristics={};
   var attributeRowId;
-
+  var myID;
+  var calls;
 var id_of_caller; //must fix this later. horrible solution
 //////////////////////
 
@@ -95,7 +101,7 @@ var id_of_caller; //must fix this later. horrible solution
       browserCell.innerHTML =client['Browser'];
       osCell.innerHTML =client['OS'];
 
-
+if(client['peerid']!=myID){
       peernameCell.onclick = function() {
       if(peerblockCell.innerHTML=="false")
       {
@@ -108,6 +114,7 @@ var id_of_caller; //must fix this later. horrible solution
       }
 
       };
+    }
             attributeToggle.onclick = function(){
    console.log("Here:"+attributeRowId);
    $("#"+client['AttributeRow']).toggle();
@@ -170,6 +177,7 @@ socket.on('name_result',function(result){
 
 //this runs right when a peer connects to the webpage
   peer.on('open', function(){
+     myID=peer.id;
      socket.emit('getClientList');    //get all devices connected to server 
      socket.emit('addnewpeer',peer.id);   //add this device to the server client list
      document.getElementById("alias_id").innerHTML ="Alias Name: "+peer.id; //display peer.id on page
@@ -256,7 +264,7 @@ socket.on('here_is_resolution',function(data){
                   rows[x].setAttribute("FreeSpace",(rowFreeSpace-data['width']/2));
                   var newCell=rows[x].insertCell(num_of_cells);
                   newCell.setAttribute("width",(data['width']/2));
-                  newCell.innerHTML="<div class='peerVideo'><video id='"+videoboxid+"' class='peerVideo'></video></div>";
+                  newCell.innerHTML="<div class='peerVideo'><video id='"+videoboxid+"' class='peerVideo'></video><button onclick='close_stream()'>X</button></div>";
                   spot_found=true;
                 }
                 
@@ -268,13 +276,17 @@ socket.on('here_is_resolution',function(data){
                 newRow.setAttribute("FreeSpace",(rowWidth-data['width']/2));
                 var newCell=newRow.insertCell(0);          
                 newCell.setAttribute("width",(data['width']/2));
-                newCell.innerHTML="<div class='peerVideo'><video id='"+videoboxid+"' class='peerVideo'></video></div>";
+                newCell.innerHTML="<div class='peerVideo'><video id='"+videoboxid+"' class='peerVideo'></video><button onclick='close_stream()'>X</button></div>";
               }
         
                 socket.emit('force_call',data['peerid']);
 
         //<video id="videobox" class="peerVideo"></video>
 });
+
+function close_stream(){
+  alert("helo");
+}
 //this is run when the server gets a notification that a device is requesting this devices stream. The server sends a 'make_call' signal to this device. The 'peer_id' received in the function below is the peer.id of the device that made the request for this peers stream.
 socket.on('make_call',function(peer_id){
 
@@ -299,7 +311,8 @@ socket.on('make_call',function(peer_id){
 
       call.answer(); // Answer the call with an A/V stream. 
       call.on('stream', function(mediaConnection) {
-       
+       //calls[id_of_caller];
+       //calls[id_of_caller]=call;
         //place the stream on to the page and once its meta data is loaded, play the stream
           
           video.srcObject  = mediaConnection;
@@ -308,8 +321,10 @@ socket.on('make_call',function(peer_id){
             video.play();
 
           };
+
         });
 
+      
       call.on('close',function(){
         var cell=video.parentNode;
         var row=cell.parentNode;
