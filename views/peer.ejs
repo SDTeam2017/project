@@ -34,6 +34,7 @@
 <script src="/javascripts/DetectRTC.js"></script>
 
 <script src="/javascripts/jquery.js"></script>
+<script src="/javascripts/ua-parser.js"></script>
 
 <script >
   
@@ -61,37 +62,38 @@
   var attributeRowId;
   var myID;
   var calls;
-var id_of_caller; //must fix this later. horrible solution
+  var battery;
+var id_of_caller; 
+//var parser = new UAParser();
+//must fix this later. horrible solution
 //////////////////////
 
   //when new device connects, add it to the alias list, which is in the form of a table. The function receive an object called client and has the value {"peername":new_client_name, "peerid":new_client_id}
   socket.on('add',function(client){
-      var table = document.getElementById("alias_list");
-      var row = table.insertRow(table.rows.length);
+    var table = document.getElementById("alias_list");
+    var row = table.insertRow(table.rows.length);
 
-        var atrow = table.insertRow(table.rows.length);
-   attributeRowId = client['peerid']+"at";
+    var atrow = table.insertRow(table.rows.length);
+    attributeRowId = client['peerid']+"at";
     client['AttributeRow']=attributeRowId;
-   atrow.setAttribute("id", client['peerid']+"at")
-   atrow.setAttribute("class", "attributeRow");
+    atrow.setAttribute("id", client['peerid']+"at")
+    atrow.setAttribute("class", "attributeRow");
 
-
-
-
-      row.setAttribute("id",client['peerid']) 
-      row.setAttribute("class","aliaslist")     
-      var peernameCell = row.insertCell(0);
-      var peerblockCell = row.insertCell(1);
+    row.setAttribute("id",client['peerid']) 
+    row.setAttribute("class","aliaslist")     
+    var peernameCell = row.insertCell(0);
+    var peerblockCell = row.insertCell(1);
       /*var cameraCell= row.insertCell(2);
       var micCell= row.insertCell(3);
       var browserCell= row.insertCell(4);
       var osCell= row.insertCell(5);*/
-            var attributeToggle =row.insertCell(2);
-   attributeToggle.innerHTML = "+";
-   var cameraCell= atrow.insertCell(0);
-   var micCell= atrow.insertCell(1);
-  var browserCell= atrow.insertCell(2);
-   var osCell= atrow.insertCell(3);
+      var attributeToggle =row.insertCell(2);
+      attributeToggle.innerHTML = "+";
+      var cameraCell= atrow.insertCell(0);
+      var micCell= atrow.insertCell(1);
+      var browserCell= atrow.insertCell(2);
+      var osCell= atrow.insertCell(3);
+      var batteryCell = atrow.insertCell(4);
       
 
       peerblockCell.innerHTML = client['blocking'];
@@ -100,49 +102,79 @@ var id_of_caller; //must fix this later. horrible solution
       micCell.innerHTML =client['Microphone'];
       browserCell.innerHTML =client['Browser'];
       osCell.innerHTML =client['OS'];
+      batteryCell.innerHTML=client['Battery'];
 
-if(client['peerid']!=myID){
-      peernameCell.onclick = function() {
-      if(peerblockCell.innerHTML=="false")
-      {
-       socket.emit('give_me_resolution',client['peerid']);//get video resolution of the peer clicked
-       id_of_caller=client['peerid'];
-      }
-      else
-      {
-        alert("Client '"+client['peername']+"' is blocking access.");
-      }
+      if(client['peerid']!=myID){
+       // constraints = { audio: true, video:{ facingMode: "environment" }} ; 
+        peernameCell.onclick = function() {
+          if(peerblockCell.innerHTML=="false")
+          {
+             socket.emit('give_me_resolution',client['peerid']);//get video resolution of the peer clicked
+             id_of_caller=client['peerid'];
+          }
+          else if(peerblockCell.innerHTML=="true")
+          {
+            alert("Client '"+client['peername']+"' is blocking access.");
+          }
 
       };
+      micCell.onclick = function(){
+       // constraints = { audio: true, video: false}; 
+        if(peerblockCell.innerHTML=="false")
+          {
+             socket.emit('give_me_resolution_audio',client['peerid']);//get video resolution of the peer clicked
+             id_of_caller=client['peerid'];
+          }
+          else if(peerblockCell.innerHTML=="true")
+          {
+            alert("Client '"+client['peername']+"' is blocking access.");
+          }
+      };
+      cameraCell.onclick = function(){
+       // constraints = { audio: true, video: false}; 
+        if(peerblockCell.innerHTML=="false")
+          {
+             socket.emit('give_me_resolution_video',client['peerid']);//get video resolution of the peer clicked
+             id_of_caller=client['peerid'];
+          }
+          else if(peerblockCell.innerHTML=="true")
+          {
+            alert("Client '"+client['peername']+"' is blocking access.");
+          }
+      };
     }
-            attributeToggle.onclick = function(){
-   console.log("Here:"+attributeRowId);
-   $("#"+client['AttributeRow']).toggle();
-   if(attributeToggle.innerHTML == "-")
-     attributeToggle.innerHTML = "+";
-   else
-    attributeToggle.innerHTML = "-"
- };
- }); 
-
+attributeToggle.onclick = function(){
+ console.log("Here:"+attributeRowId);
+ $("#"+client['AttributeRow']).toggle();
+ if(attributeToggle.innerHTML == "-")
+   attributeToggle.innerHTML = "+";
+ else
+  attributeToggle.innerHTML = "-"
+};
+}); 
+//$(".attributeRow").hide();
   //updating name of existing peer in the table
   socket.on('update',function(client){
-      document.getElementById(client['peerid']).cells[1].innerHTML=client['blocking'];
-      document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
-      document.getElementById(client['peerid']+"at").cells[0].innerHTML=client['Camera'];
-      document.getElementById(client['peerid']+"at").cells[1].innerHTML=client['Microphone'];
-      document.getElementById(client['peerid']+"at").cells[2].innerHTML=client['Browser'];
-      document.getElementById(client['peerid']+"at").cells[3].innerHTML=client['OS'];
-      $(".attributeRow").hide();
+    document.getElementById(client['peerid']).cells[1].innerHTML=client['blocking'];
+    document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
+    document.getElementById(client['peerid']+"at").cells[0].innerHTML=client['Camera'];
+    document.getElementById(client['peerid']+"at").cells[1].innerHTML=client['Microphone'];
+    document.getElementById(client['peerid']+"at").cells[2].innerHTML=client['Browser'];
+    document.getElementById(client['peerid']+"at").cells[3].innerHTML=client['OS'];
+    document.getElementById(client['peerid']+"at").cells[4].innerHTML=client['Battery'];
+    $(".attributeRow").hide();
 
- }); 
-
+  }); 
+  socket.on('updateBattery', function(client)
+  {
+    document.getElementById(client['peerid']+"at").cells[4].innerHTML=client['Battery'];
+  });
   //removing peer alias list table when the device leaves the website and is removed from server
-     socket.on('remove',function(client){
-          var rowIndex = document.getElementById(client['peerid']).rowIndex;
-          var table = document.getElementById("alias_list");
-          table.deleteRow(rowIndex);
-     });
+  socket.on('remove',function(client){
+    var rowIndex = document.getElementById(client['peerid']).rowIndex;
+    var table = document.getElementById("alias_list");
+    table.deleteRow(rowIndex);
+  });
 
   //after the server checks if an enterered alias name is valid or not, this function obtains the result. Result = {'name':alias_name_entered_by_user, 'exists':true_or_false}. If alias name already exists for another connected device, server returns true, otherwise false.
 socket.on('name_result',function(result){
@@ -201,7 +233,7 @@ socket.on('name_result',function(result){
   function getDeviceCharacteristics()
   {
      if(DetectRTC.hasWebcam){
-      myCamera= "Has Camera\n"+myWidth+"x"+myHeight;
+      myCamera= "Camera\n"+myWidth+"x"+myHeight;
        DeviceCharacteristics['Camera']=myCamera;
        DeviceCharacteristics['Height']=myHeight;
        DeviceCharacteristics['Width']=myWidth;
@@ -209,7 +241,7 @@ socket.on('name_result',function(result){
      else{DeviceCharacteristics['Camera']="No Camera"; }
 
      if(DetectRTC.hasMicrophone){
-      myMicrophone ="Has Microphone";
+      myMicrophone ="Microphone";
       DeviceCharacteristics['Microphone']= myMicrophone;
      }
      else{DeviceCharacteristics['Camera']="No Microphone"; }
@@ -218,10 +250,33 @@ socket.on('name_result',function(result){
      DeviceCharacteristics['OS']= myOs;
      myBrowser =  DetectRTC.browser.name + ": " + DetectRTC.browser.version;
      DeviceCharacteristics['Browser']= myBrowser;
-     socket.emit("gotDeviceInfo",DeviceCharacteristics);
+     DeviceCharacteristics['Battery']= "Pending";
+    console.log(result);
+    socket.emit("gotDeviceInfo",DeviceCharacteristics);
+     
   }
-  
-  //DetectRTC must be loaded before methods can be called, getUserMedia must also be called once, before DetectRTC can work
+  /*
+  Justin
+  Get Battery Level, updating is slow but happens on level change and charging/not charging*/
+  var result = navigator.getBattery().then(function(battery)
+      {
+       DeviceCharacteristics['Battery']= 'Battery: '+battery.level +'\nStatus: '+ (battery.charging ? 'charging' : 'not charging');
+       //setTimeout(socket.emit("batteryChange",DeviceCharacteristics),2000);
+       //socket.emit("batteryChange",DeviceCharacteristics);
+        battery.onlevelchange = function(){
+            DeviceCharacteristics['Battery']= 'Battery: '+battery.level +'\nStatus: '+ (battery.charging ? 'charging' : 'not charging');
+            socket.emit("batteryChange",DeviceCharacteristics);
+        }
+
+        battery.onchargingchange = function(){
+          DeviceCharacteristics['Battery']= 'Battery: '+battery.level +'\nStatus: '+ (battery.charging ? 'charging' : 'not charging');
+          socket.emit("batteryChange",DeviceCharacteristics);
+        }
+    });
+  /*
+    Justin
+    DetectRTC must be loaded before methods can be called, getUserMedia must also be called once, before DetectRTC can work, test stream used to get video resolution
+  */
   function loadDetectRTC()
   {
     navigator.mediaDevices.getUserMedia(constraints)
@@ -230,25 +285,32 @@ socket.on('name_result',function(result){
         video.srcObject  = stream;
         video.onloadedmetadata = function(e) 
         {
-          myHeight=video.videoHeight;
+          //Get Resolution
+          myHeight=video.videoHeight;   
           myWidth=video.videoWidth;
           getDeviceCharacteristics();
+          //close stream
           if (stream) {
               stream.getTracks().forEach(function (track) {
                   track.stop();
                 })
             }
-        };
-          
+        };  
     })
     .catch(function(err) { console.log(err.name + ": " + err.message); });
   }
-
-  /*justin*/
   
 socket.on('get_resolution',function(peerid){
     //send my resoltuion to the peer with peerid
-    socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth});
+    socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth, 'audioOnly':false, 'videoOnly':false});
+});
+socket.on('get_resolution_audio',function(peerid){
+    //send my resoltuion to the peer with peerid
+    socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth, 'audioOnly':true, 'videoOnly':false});
+});
+socket.on('get_resolution_video',function(peerid){
+    //send my resoltuion to the peer with peerid
+    socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth, 'audioOnly':false, 'videoOnly':true});
 });
 socket.on('here_is_resolution',function(data){
               var table=document.getElementById("video_table");
@@ -278,8 +340,17 @@ socket.on('here_is_resolution',function(data){
                 newCell.setAttribute("width",(data['width']/2));
                 newCell.innerHTML="<div class='peerVideo'><video id='"+videoboxid+"' class='peerVideo'></video><button onclick='close_stream()'>X</button></div>";
               }
-        
-                socket.emit('force_call',data['peerid']);
+                if(data.audioOnly==true){
+                  //socket.emit('force_call',data['peerid']);
+                  socket.emit('force_audio_call',data['peerid']);
+                }
+                else if(data.videoOnly==true){
+                    socket.emit('force_video_call',data['peerid']);
+                }
+                else{
+                  socket.emit('force_call',data['peerid']);
+                }
+                
 
         //<video id="videobox" class="peerVideo"></video>
 });
@@ -289,7 +360,40 @@ function close_stream(){
 }
 //this is run when the server gets a notification that a device is requesting this devices stream. The server sends a 'make_call' signal to this device. The 'peer_id' received in the function below is the peer.id of the device that made the request for this peers stream.
 socket.on('make_call',function(peer_id){
+//console.log("wuuuuuuh"+constraints);
+  navigator.mediaDevices.getUserMedia(constraints)
+  .then(function(stream) {
+    console.log("wuuuuuuh"+constraints);
+        var video= document.getElementById("myVideo");
+        video.srcObject  = stream;
+        video.onloadedmetadata = function(e) {
+          console.log(video.videoHeight)
+              };
+    peer.call(peer_id, stream);
+  })
+  .catch(function(err) { console.log(err.name + ": " + err.message); });
+});
 
+socket.on('make_audio_call',function(peer_id){
+//console.log("wuuuuuuh"+constraints);
+constraints = { audio: true, video:false};
+  navigator.mediaDevices.getUserMedia(constraints)
+  .then(function(stream) {
+    console.log("wuuuuuuh"+constraints);
+        var video= document.getElementById("myVideo");
+        video.srcObject  = stream;
+        video.onloadedmetadata = function(e) {
+          console.log(video.videoHeight)
+              };
+    peer.call(peer_id, stream);
+  })
+  .catch(function(err) { console.log(err.name + ": " + err.message); });
+//make a call to the peer that requested this devices stream, and send the stream to them.
+  
+});
+
+socket.on('make_video_call',function(peer_id){
+constraints = { audio: false, video:true};
   navigator.mediaDevices.getUserMedia(constraints)
   .then(function(stream) {
         var video= document.getElementById("myVideo");
@@ -303,8 +407,6 @@ socket.on('make_call',function(peer_id){
 //make a call to the peer that requested this devices stream, and send the stream to them.
   
 });
-
-
 //this event is run when a stream is being sent to this device by another peer on the network.
    peer.on('call', function(call) {
           var video= document.getElementById("vb_"+id_of_caller);
