@@ -32,6 +32,8 @@
 <script src="/javascripts/peer.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script src="/javascripts/DetectRTC.js"></script>
+<script src="/javascripts/element-resize-detector.min.js"></script>
+<script src="/javascripts/adapter.js"></script>
 
 <script src="/javascripts/jquery.js"></script>
 
@@ -60,12 +62,14 @@
   var DeviceCharacteristics={};
   var attributeRowId;
   var myID;
-  var calls;
-var id_of_caller; //must fix this later. horrible solution
+  var calls={};
+var erd = elementResizeDetectorMaker();
+
 //////////////////////
 
   //when new device connects, add it to the alias list, which is in the form of a table. The function receive an object called client and has the value {"peername":new_client_name, "peerid":new_client_id}
   socket.on('add',function(client){
+
       var table = document.getElementById("alias_list");
       var row = table.insertRow(table.rows.length);
 
@@ -101,20 +105,36 @@ var id_of_caller; //must fix this later. horrible solution
       browserCell.innerHTML =client['Browser'];
       osCell.innerHTML =client['OS'];
 
-if(client['peerid']!=myID){
-      peernameCell.onclick = function() {
-      if(peerblockCell.innerHTML=="false")
+if(client['peerid']!=myID)
+    {
+      peernameCell.onclick = function() 
       {
-       socket.emit('give_me_resolution',client['peerid']);//get video resolution of the peer clicked
-       id_of_caller=client['peerid'];
-      }
-      else
-      {
-        alert("Client '"+client['peername']+"' is blocking access.");
-      }
+        if(document.getElementById("vb_"+client['peerid'])==null)
+        {
+          if(peerblockCell.innerHTML=="false")
+          {
+           socket.emit('give_me_resolution',client['peerid']);//get video resolution of the peer clicked
+          }
+          else
+          {
+            alert("Client '"+client['peername']+"' is blocking access.");
+          }
+        }
+        else
+        {
+          alert(peernameCell.innerHTML+" stream is already being viewed.");
+        }
 
       };
     }
+else
+{
+  peernameCell.onclick = function()
+  {
+    alert("Cannot view own stream");
+  }
+}
+
             attributeToggle.onclick = function(){
    console.log("Here:"+attributeRowId);
    $("#"+client['AttributeRow']).toggle();
@@ -222,6 +242,8 @@ socket.on('name_result',function(result){
   }
   
   //DetectRTC must be loaded before methods can be called, getUserMedia must also be called once, before DetectRTC can work
+     var localVideo= document.getElementById("myVideo");
+
   function loadDetectRTC()
   {
     navigator.mediaDevices.getUserMedia(constraints)
@@ -254,17 +276,19 @@ socket.on('here_is_resolution',function(data){
               var table=document.getElementById("video_table");
               var rows=table.rows;
               var videoboxid="vb_"+data['peerid'];
+              var buttonid="button_"+data['peerid'];
               var spot_found=false;
               for(var x=0;x<rows.length;x++)
               {
                 rowFreeSpace=rows[x].getAttribute("FreeSpace");
-                if(rowFreeSpace>=(data['width']/2))
+                if(parseInt(rowFreeSpace)>=(data['width']/2))
                 {
                   var num_of_cells=rows[x].cells.length;
                   rows[x].setAttribute("FreeSpace",(rowFreeSpace-data['width']/2));
                   var newCell=rows[x].insertCell(num_of_cells);
                   newCell.setAttribute("width",(data['width']/2));
-                  newCell.innerHTML="<div class='peerVideo'><video id='"+videoboxid+"' class='peerVideo'></video><button onclick='close_stream()'>X</button></div>";
+                  newCell.setAttribute("class","peerVideo");
+                  newCell.innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video><button class='videobutton' id='"+buttonid+"' onclick='close_stream("+buttonid+")'>X</button>";
                   spot_found=true;
                 }
                 
@@ -273,20 +297,33 @@ socket.on('here_is_resolution',function(data){
               {
                 var rowWidth=document.getElementById("videoTableDiv").offsetWidth;
                 var newRow=table.insertRow(rows.length);
-                newRow.setAttribute("FreeSpace",(rowWidth-data['width']/2));
-                var newCell=newRow.insertCell(0);          
+                var newCell=newRow.insertCell(0); 
                 newCell.setAttribute("width",(data['width']/2));
-                newCell.innerHTML="<div class='peerVideo'><video id='"+videoboxid+"' class='peerVideo'></video><button onclick='close_stream()'>X</button></div>";
+               // newCell.setAttribute("style","width:"+(data['width']/2)+"px;");
+                newCell.setAttribute("class","peerVideo");
+                newCell.innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video><button class='videobutton' id='"+buttonid+"' onclick='close_stream("+buttonid+")'>X</button>";
+                newRow.setAttribute("FreeSpace",(rowWidth-data['width']/2)+"px");
+               /* var trueWidth=newCell.offsetWidth;
+                newRow.setAttribute("FreeSpace",(rowWidth-trueWidth)+"px");
+                erd.listenTo(newCell,function() {
+                  
+                  console.log(newCell.offsetWidth-trueWidth);
+                              
+              
+              });*/
               }
-        
+
                 socket.emit('force_call',data['peerid']);
 
         //<video id="videobox" class="peerVideo"></video>
 });
 
-function close_stream(){
-  alert("helo");
+function close_stream(button_elem){
+  var peerid=button_elem.id.substring(7);
+  calls[peerid].close();
 }
+//window.addEventListener('resize', () => { alert("window resized"); });
+
 //this is run when the server gets a notification that a device is requesting this devices stream. The server sends a 'make_call' signal to this device. The 'peer_id' received in the function below is the peer.id of the device that made the request for this peers stream.
 socket.on('make_call',function(peer_id){
 
@@ -304,15 +341,14 @@ socket.on('make_call',function(peer_id){
   
 });
 
-
 //this event is run when a stream is being sent to this device by another peer on the network.
    peer.on('call', function(call) {
-          var video= document.getElementById("vb_"+id_of_caller);
 
+      var video= document.getElementById("vb_"+call.peer);
+      calls[call.peer]=call;
+     
       call.answer(); // Answer the call with an A/V stream. 
       call.on('stream', function(mediaConnection) {
-       //calls[id_of_caller];
-       //calls[id_of_caller]=call;
         //place the stream on to the page and once its meta data is loaded, play the stream
           
           video.srcObject  = mediaConnection;
@@ -326,7 +362,8 @@ socket.on('make_call',function(peer_id){
 
       
       call.on('close',function(){
-        var cell=video.parentNode;
+        delete calls[call.peer];
+        var cell=video.parentNode; 
         var row=cell.parentNode;
         var tableBody=row.parentNode;
         if(row.cells.length==1)
