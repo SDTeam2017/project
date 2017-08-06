@@ -6,6 +6,8 @@
 /*dont worry about this section for now*/
 var app = require('../app');
 var debug = require('debug')('myapp:server');
+
+
 //var http = require('http');
 
 
@@ -23,6 +25,7 @@ var server = https.createServer(options, app
 }*/
 ).listen(80);
 var io = require('socket.io')(server);
+
 /*code for peerjs with existing express app*/
 /*********************************************/
 var peerhttps = require('https');
@@ -51,7 +54,6 @@ peerapp.use('/', peerServer);
 var clients={};         //holds objvet made of client peer.id and client peername. the key is the socket.id
 var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
   io.sockets.on('connection', function (socket) {
-    
 //send peerid and peername of all connected devices to a device that is just added to the network
     socket.on('getClientList',function(){
       for(var key in clients){
@@ -61,7 +63,7 @@ var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
 
 //when a new peer connects to network
     socket.on('addnewpeer', function (peerid) {
-        clients[socket.id]={"peerid":peerid,"peername":peerid,"blocking":false};
+        clients[socket.id]={"peerid":peerid,"peername":peerid,"blocking":true};
         peerid_to_socketid[peerid]=socket.id;
         io.emit("add",clients[socket.id]);
     });
@@ -73,8 +75,13 @@ var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
         clients[socket.id]["Microphone"]=DeviceCharacteristics.Microphone;
         clients[socket.id]["Browser"]=DeviceCharacteristics.Browser;
         clients[socket.id]["OS"]=DeviceCharacteristics.OS;
+        clients[socket.id]["Battery"]=DeviceCharacteristics.Battery;
         io.emit("update",clients[socket.id]);
     });
+      socket.on('batteryChange',function(DeviceCharacteristics){
+       clients[socket.id]["Battery"]=DeviceCharacteristics.Battery;
+       io.emit('updateBattery', clients[socket.id]);
+     });
 //when a peer changes its alias name on the network
     socket.on('editname', function (name) {
         clients[socket.id]["peername"]=name;
@@ -111,8 +118,8 @@ socket.on('check_peer_name',function(name){
     });
 
 socket.on('block_access', function (block) {
+
         clients[socket.id]["blocking"]=block;
-        console.log(clients[socket.id]["blocking"]);
         io.emit("update",clients[socket.id]);
     });
 
@@ -126,14 +133,42 @@ socket.on('block_access', function (block) {
       //peerid
       io.sockets.connected[socketid].emit('make_call',clients[socket.id]['peerid']);
     });
+     socket.on('force_audio_call',function(peerid){  
+      var socketid=peerid_to_socketid[peerid];  //look up socket id of the remove device based on its peerid
 
-    socket.on('give_me_resolution',function(peerid){
+      //emit to the remote device only, and tell it to call the local device by passing it the local device
+      //peerid
+      io.sockets.connected[socketid].emit('make_audio_call',clients[socket.id]['peerid']);
+    });
+    socket.on('force_video_call',function(peerid){  
+      var socketid=peerid_to_socketid[peerid];  //look up socket id of the remove device based on its peerid
+
+      //emit to the remote device only, and tell it to call the local device by passing it the local device
+      //peerid
+      io.sockets.connected[socketid].emit('make_video_call',clients[socket.id]['peerid']);
+    });
+    socket.on('audio_call',function(peerid){  
+      var socketid=peerid_to_socketid[peerid];  //look up socket id of the remove device based on its peerid
+
+      //emit to the remote device only, and tell it to call the local device by passing it the local device
+      //peerid
+      io.sockets.connected[socketid].emit('make_audio_call',clients[socket.id]['peerid']);
+    });
+ socket.on('give_me_resolution',function(peerid){
         var socketid=peerid_to_socketid[peerid]; //get socket id we want the resolution from
         io.sockets.connected[socketid].emit('get_resolution',clients[socket.id]['peerid']);
     });
+    socket.on('give_me_resolution_audio',function(peerid){
+        var socketid=peerid_to_socketid[peerid]; //get socket id we want the resolution from
+        io.sockets.connected[socketid].emit('get_resolution_audio',clients[socket.id]['peerid']);
+    });
+   socket.on('give_me_resolution_video',function(peerid){
+        var socketid=peerid_to_socketid[peerid]; //get socket id we want the resolution from
+        io.sockets.connected[socketid].emit('get_resolution_video',clients[socket.id]['peerid']);
+    });
     socket.on('my_resolution',function(data){
       var socketid=peerid_to_socketid[data['peerid']]; //get socket of peer that requested the resolution
-      var obj={'height':data['height'],'width':data['width'],'peerid':clients[socket.id]['peerid']};
+      var obj={'height':data['height'],'width':data['width'],'peerid':clients[socket.id]['peerid'], 'audioOnly':data['audioOnly'], 'videoOnly':data['videoOnly']};
       io.sockets.connected[socketid].emit('here_is_resolution',obj);
     })
   });
