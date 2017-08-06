@@ -6,6 +6,7 @@
   </head>
   <body>
     <div><h1 class="aliasname" id="alias_id" onclick="change_name()"></h1></div>
+    <img src ="logo.png" style ="display: block; margin: 0 auto;">
     <div>
       <label class="switch">
       <input type="checkbox" value = 'on' id ='blocker' onclick = 'block_access()'>
@@ -16,7 +17,7 @@
     <div class="dropdown">
       <h2 style="color:white; text-align: center;">Alias List</h2>
         <div class="dropdown-content">
-             <table style="border-collapse: collapse; width:100%;" id="alias_list">
+             <table  id="alias_list">
                 <tr><th id = "peers" class="aliaslist">Peer Name</th> <th class="aliaslist">Available</th><th class="aliaslist" id = "attrCell">Attributes</th></tr>
               </table>
         </div>
@@ -34,7 +35,7 @@
 <script src="/javascripts/DetectRTC.js"></script>
 <script src="/javascripts/element-resize-detector.min.js"></script>
 <script src="/javascripts/adapter.js"></script>
-
+<script src="/javascripts/ua-parser.js"></script>
 <script src="/javascripts/jquery.js"></script>
 
 <script >
@@ -63,6 +64,7 @@
   var attributeRowId;
   var myID;
   var calls={};
+  var battery;
 var erd = elementResizeDetectorMaker();
 
 //////////////////////
@@ -96,14 +98,22 @@ var erd = elementResizeDetectorMaker();
    var micCell= atrow.insertCell(1);
   var browserCell= atrow.insertCell(2);
    var osCell= atrow.insertCell(3);
-      
+   var batteryCell = atrow.insertCell(4);
+      if(client['blocking']==false){
+        document.getElementById(client['peerid']).cells[1].style.color ="red";
+      }
+      else
+        document.getElementById(client['peerid']).cells[1].style.color ="green";
 
       peerblockCell.innerHTML = client['blocking'];
+      peerblockCell.style.fontWeight = 'bold';
       peernameCell.innerHTML = client['peername'];
+      peernameCell.style.fontWeight='bold';
       cameraCell.innerHTML =client['Camera'];
       micCell.innerHTML =client['Microphone'];
       browserCell.innerHTML =client['Browser'];
       osCell.innerHTML =client['OS'];
+      batteryCell.innerHTML=client['Battery'];
 
 if(client['peerid']!=myID)
     {
@@ -111,13 +121,13 @@ if(client['peerid']!=myID)
       {
         if(document.getElementById("vb_"+client['peerid'])==null)
         {
-          if(peerblockCell.innerHTML=="false")
+          if(peerblockCell.innerHTML=="true")
           {
            socket.emit('give_me_resolution',client['peerid']);//get video resolution of the peer clicked
           }
           else
           {
-            alert("Client '"+client['peername']+"' is blocking access.");
+            alert("Client '"+peernameCell.innerHTML+"' is blocking access.");
           }
         }
         else
@@ -126,7 +136,42 @@ if(client['peerid']!=myID)
         }
 
       };
-    }
+      micCell.onclick = function(){
+       // constraints = { audio: true, video: false};
+      if(document.getElementById("vb_"+client['peerid'])==null)
+        {
+        if(peerblockCell.innerHTML=="true")
+          {
+             socket.emit('give_me_resolution_audio',client['peerid']);//get video resolution of the peer clicked
+          }
+          else
+          {
+            alert("Client '"+peernameCell.innerHTML+"' is blocking access.");
+          }
+        }
+        else
+        {
+          alert(peernameCell.innerHTML+" stream is already being viewed.");
+        }
+      };
+      cameraCell.onclick = function(){
+       // constraints = { audio: true, video: false};
+       if(document.getElementById("vb_"+client['peerid'])==null){
+        if(peerblockCell.innerHTML=="true")
+          {
+             socket.emit('give_me_resolution_video',client['peerid']);//get video resolution of the peer clicked
+          }
+          else
+          {
+            alert("Client '"+peernameCell.innerHTML+"' is blocking access.");
+          }
+        }
+        else
+        {
+          alert(peernameCell.innerHTML+" stream is already being viewed.");
+        }
+    };
+}
 else
 {
   peernameCell.onclick = function()
@@ -148,14 +193,32 @@ else
   //updating name of existing peer in the table
   socket.on('update',function(client){
       document.getElementById(client['peerid']).cells[1].innerHTML=client['blocking'];
+      if(client['blocking']==false){
+        document.getElementById(client['peerid']).cells[1].style.color ="red";
+      }
+      else
+        document.getElementById(client['peerid']).cells[1].style.color ="green";
+      if(document.getElementById(client['peerid']).cells[0].innerHTML!=client['peername'])
+      {
+        if(document.getElementById("pid_"+client['peerid'])!=null)
+        {
+          document.getElementById("pid_"+client['peerid']).innerHTML="\tPeer Name: "+client['peername'];
+        }
+      }
       document.getElementById(client['peerid']).cells[0].innerHTML=client['peername'];
+
       document.getElementById(client['peerid']+"at").cells[0].innerHTML=client['Camera'];
       document.getElementById(client['peerid']+"at").cells[1].innerHTML=client['Microphone'];
       document.getElementById(client['peerid']+"at").cells[2].innerHTML=client['Browser'];
       document.getElementById(client['peerid']+"at").cells[3].innerHTML=client['OS'];
+      document.getElementById(client['peerid']+"at").cells[4].innerHTML=client['Battery'];
       $(".attributeRow").hide();
 
  }); 
+  socket.on('updateBattery', function(client)
+   {
+ document.getElementById(client['peerid']+"at").cells[4].innerHTML=client['Battery'];
+   });
 
   //removing peer alias list table when the device leaves the website and is removed from server
      socket.on('remove',function(client){
@@ -205,14 +268,14 @@ socket.on('name_result',function(result){
 
      DetectRTC.load(loadDetectRTC);   //Load DetectRTC to find device characteristics
   });
-  var bool=false;
+  var bool=true;
   function block_access(){
-    if(bool==false)
+    if(bool==true)
     {
-      bool=true;
+      bool=false;
     }
     else{
-      bool=false;
+      bool=true;
     }
     socket.emit('block_access',bool);
   }
@@ -221,7 +284,7 @@ socket.on('name_result',function(result){
   function getDeviceCharacteristics()
   {
      if(DetectRTC.hasWebcam){
-      myCamera= "Has Camera\n"+myWidth+"x"+myHeight;
+      myCamera= "Camera\n"+myWidth+"x"+myHeight;
        DeviceCharacteristics['Camera']=myCamera;
        DeviceCharacteristics['Height']=myHeight;
        DeviceCharacteristics['Width']=myWidth;
@@ -229,7 +292,7 @@ socket.on('name_result',function(result){
      else{DeviceCharacteristics['Camera']="No Camera"; }
 
      if(DetectRTC.hasMicrophone){
-      myMicrophone ="Has Microphone";
+      myMicrophone ="Microphone";
       DeviceCharacteristics['Microphone']= myMicrophone;
      }
      else{DeviceCharacteristics['Camera']="No Microphone"; }
@@ -238,9 +301,26 @@ socket.on('name_result',function(result){
      DeviceCharacteristics['OS']= myOs;
      myBrowser =  DetectRTC.browser.name + ": " + DetectRTC.browser.version;
      DeviceCharacteristics['Browser']= myBrowser;
+     DeviceCharacteristics['Battery']= "Pending";
      socket.emit("gotDeviceInfo",DeviceCharacteristics);
   }
-  
+  /*
+  Justin
+  Get Battery Level, updating is slow but happens on level change and charging/not charging*/
+  var result = navigator.getBattery().then(function(battery)
+      {
+       DeviceCharacteristics['Battery']= 'Battery: '+battery.level +'\nStatus: '+ (battery.charging ? 'charging' : 'not charging');
+       //setTimeout(socket.emit("batteryChange",DeviceCharacteristics),2000);
+       //socket.emit("batteryChange",DeviceCharacteristics);
+        battery.onlevelchange = function(){
+            DeviceCharacteristics['Battery']= 'Battery: '+battery.level +'\nStatus: '+ (battery.charging ? 'charging' : 'not charging');
+            socket.emit("batteryChange",DeviceCharacteristics);
+        }
+        battery.onchargingchange = function(){
+          DeviceCharacteristics['Battery']= 'Battery: '+battery.level +'\nStatus: '+ (battery.charging ? 'charging' : 'not charging');
+          socket.emit("batteryChange",DeviceCharacteristics);
+        }
+    });
   //DetectRTC must be loaded before methods can be called, getUserMedia must also be called once, before DetectRTC can work
      var localVideo= document.getElementById("myVideo");
 
@@ -270,14 +350,25 @@ socket.on('name_result',function(result){
   
 socket.on('get_resolution',function(peerid){
     //send my resoltuion to the peer with peerid
-    socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth});
+    socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth, 'audioOnly':false, 'videoOnly':false});
+});
+socket.on('get_resolution_audio',function(peerid){
+    //send my resoltuion to the peer with peerid
+    socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth, 'audioOnly':true, 'videoOnly':false});
+});
+socket.on('get_resolution_video',function(peerid){
+    //send my resoltuion to the peer with peerid
+    socket.emit('my_resolution',{'peerid':peerid,'height':myHeight,'width':myWidth, 'audioOnly':false, 'videoOnly':true});
 });
 socket.on('here_is_resolution',function(data){
               var table=document.getElementById("video_table");
               var rows=table.rows;
               var videoboxid="vb_"+data['peerid'];
               var buttonid="button_"+data['peerid'];
+              var pID="pid_"+data['peerid'];
               var spot_found=false;
+              var peername=document.getElementById(data['peerid']).cells[0].innerHTML;
+
               for(var x=0;x<rows.length;x++)
               {
                 rowFreeSpace=rows[x].getAttribute("FreeSpace");
@@ -288,7 +379,7 @@ socket.on('here_is_resolution',function(data){
                   var newCell=rows[x].insertCell(num_of_cells);
                   newCell.setAttribute("width",(data['width']/2));
                   newCell.setAttribute("class","peerVideo");
-                  newCell.innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video><button class='videobutton' id='"+buttonid+"' onclick='close_stream("+buttonid+")'>X</button>";
+                  newCell.innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video><button class='videobutton' id='"+buttonid+"' onclick='close_stream("+buttonid+")'>X</button><p id='"+pID+"' style='display:inline;'>\tPeer Name: "+peername+"</p>";
                   spot_found=true;
                 }
                 
@@ -301,8 +392,8 @@ socket.on('here_is_resolution',function(data){
                 newCell.setAttribute("width",(data['width']/2));
                // newCell.setAttribute("style","width:"+(data['width']/2)+"px;");
                 newCell.setAttribute("class","peerVideo");
-                newCell.innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video><button class='videobutton' id='"+buttonid+"' onclick='close_stream("+buttonid+")'>X</button>";
-                newRow.setAttribute("FreeSpace",(rowWidth-data['width']/2)+"px");
+                newCell.innerHTML="<video id='"+videoboxid+"' class='peerVideo'></video><button class='videobutton' id='"+buttonid+"' onclick='close_stream("+buttonid+")'>X</button><p id='"+pID+"' style='display:inline;'>\tPeer Name: "+peername+"</p>";
+                newRow.setAttribute("FreeSpace",(rowWidth-data['width']/2));
                /* var trueWidth=newCell.offsetWidth;
                 newRow.setAttribute("FreeSpace",(rowWidth-trueWidth)+"px");
                 erd.listenTo(newCell,function() {
@@ -313,20 +404,62 @@ socket.on('here_is_resolution',function(data){
               });*/
               }
 
-                socket.emit('force_call',data['peerid']);
+                if(data.audioOnly==true){
+                  //socket.emit('force_call',data['peerid']);
+                  socket.emit('force_audio_call',data['peerid']);
+                }
+                else if(data.videoOnly==true){
+                    socket.emit('force_video_call',data['peerid']);
+                }
+                else{
+                  socket.emit('force_call',data['peerid']);
+                }
 
         //<video id="videobox" class="peerVideo"></video>
 });
 
 function close_stream(button_elem){
   var peerid=button_elem.id.substring(7);
-  calls[peerid].close();
+    calls[peerid].close();
 }
 //window.addEventListener('resize', () => { alert("window resized"); });
 
 //this is run when the server gets a notification that a device is requesting this devices stream. The server sends a 'make_call' signal to this device. The 'peer_id' received in the function below is the peer.id of the device that made the request for this peers stream.
 socket.on('make_call',function(peer_id){
+   constraints = { audio: true, video:{ facingMode: "environment" }} ; //send only video, not audio. will be fixed later to be options for user to send one or both.
 
+  navigator.mediaDevices.getUserMedia(constraints)
+  .then(function(stream) {
+        var video= document.getElementById("myVideo");
+        video.srcObject  = stream;
+        video.onloadedmetadata = function(e) {
+          console.log(video.videoHeight)
+              };
+    peer.call(peer_id, stream);
+  })
+  .catch(function(err) { console.log(err.name + ": " + err.message); });
+//make a call to the peer that requested this devices stream, and send the stream to them.
+  
+});
+socket.on('make_audio_call',function(peer_id){
+//console.log("wuuuuuuh"+constraints);
+constraints = { audio: true, video:false};
+  navigator.mediaDevices.getUserMedia(constraints)
+  .then(function(stream) {
+    console.log("wuuuuuuh"+constraints);
+        var video= document.getElementById("myVideo");
+        video.srcObject  = stream;
+        video.onloadedmetadata = function(e) {
+          console.log(video.videoHeight)
+              };
+    peer.call(peer_id, stream);
+  })
+  .catch(function(err) { console.log(err.name + ": " + err.message); });
+//make a call to the peer that requested this devices stream, and send the stream to them.
+  
+});
+socket.on('make_video_call',function(peer_id){
+constraints = { audio: false, video:true};
   navigator.mediaDevices.getUserMedia(constraints)
   .then(function(stream) {
         var video= document.getElementById("myVideo");
