@@ -16,7 +16,14 @@
         left:0;
         right:0;
     }
-
+    td.peerVideo{
+        resize: horizontal;
+        overflow: auto;
+    }
+      img.peerVideo{
+        width: 100%;
+        height: auto; 
+    }
     video.peerVideo{
         width: 100%;
         height: auto; 
@@ -37,6 +44,7 @@
         border: 3px solid #73AD21;
         border-collapse: collapse;
         table-layout: fixed;
+        background-color: black;
             }
   
     div.videos{
@@ -58,7 +66,7 @@
         color: white;
     }
     h1.aliasname:hover{
-        color: red;
+        color: grey;
         cursor:pointer
     }
 
@@ -66,7 +74,7 @@
         position: absolute;
         right:0; 
         top:0;
-        width:20%;
+        width:40%;
         display: inline-block;
     }
 
@@ -78,7 +86,7 @@
        position:relative;
     }
     .dropdown:hover{
-        border: 1.5px solid red;
+        border: 1.5px solid black;
         cursor: pointer;
     }
     .dropdown:hover .dropdown-content {
@@ -86,16 +94,34 @@
         cursor: pointer;
     }
  
-th, td {
-        border: 1.5px solid red;
-}
+#alias_list{
+   font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+     border-collapse: collapse;
+     width: 100%;
+     background-color: black;
+  }
+ 
+ #alias_list th, td {
+       border: 1.5px solid grey;
+       padding-top: 12px;
+       padding-bottom: 12px;
+       text-align: left;
+       background-color: black;
+       color: green;
+
+  }
+  tr.attributeRow:hover{background-color: :grey;}
+ #alias_list td:hover{background-color: :grey;}
+
 th.aliaslist:hover{
     cursor: not-allowed;
 }
-tr.aliaslist:hover{
- background:red;
- cursor:pointer
-}
+
+tr.aliaslist:hover td {
+  background:#ddd;
+  cursor:cursor;
+ 
+  }
 
 .dropdown-submenu {
     position: relative;
@@ -111,10 +137,14 @@ tr.aliaslist:hover{
 
 }
 .switch {
-  position: relative;
+  position: absolute;
+  top: 0;
+   left: 47.5%;
+   right: 50%;
+   bottom: 0;
   display: inline-block;
-  width: 30px;
-  height: 17px;
+  width: 60px;
+  height: 34px;
 }
 
 .switch input {display:none;}
@@ -134,17 +164,17 @@ tr.aliaslist:hover{
 .slider:before {
   position: absolute;
   content: "";
-  height: 13px;
-  width: 13px;
-  left: 2px;
-  bottom: 2px;
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
   background-color: white;
   -webkit-transition: .4s;
   transition: .4s;
 }
 
 input:checked + .slider {
-  background-color: #2196F3;
+  background-color: red;
 }
 
 input:focus + .slider {
@@ -152,14 +182,14 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-  -webkit-transform: translateX(13px);
-  -ms-transform: translateX(13px);
-  transform: translateX(13px);
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
 }
 
 /* Rounded sliders */
 .slider.round {
-  border-radius: 34px;
+  border-radius: 68px;
 }
 
 .slider.round:before {
