@@ -54,6 +54,8 @@ peerapp.use('/', peerServer);
 var clients={};         //holds objvet made of client peer.id and client peername. the key is the socket.id
 var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
   io.sockets.on('connection', function (socket) {
+    clients[socket.id];
+    console.log("clients["+socket.id+"] created")
 //send peerid and peername of all connected devices to a device that is just added to the network
     socket.on('getClientList',function(){
       for(var key in clients){
@@ -69,7 +71,8 @@ var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
     });
 
      socket.on('gotDeviceInfo', function (DeviceCharacteristics) {
-        clients[socket.id]["Camera"]=DeviceCharacteristics.Camera;
+    
+          clients[socket.id]["Camera"]=DeviceCharacteristics.Camera;
         clients[socket.id]["Height"]=DeviceCharacteristics.Height;
         clients[socket.id]["Width"]=DeviceCharacteristics.Width;
         clients[socket.id]["Microphone"]=DeviceCharacteristics.Microphone;
@@ -77,6 +80,7 @@ var peerid_to_socketid={};  //holds peer.id as key, and socket.id as value
         clients[socket.id]["OS"]=DeviceCharacteristics.OS;
         clients[socket.id]["Battery"]=DeviceCharacteristics.Battery;
         io.emit("update",clients[socket.id]);
+      
     });
       socket.on('batteryChange',function(DeviceCharacteristics){
        clients[socket.id]["Battery"]=DeviceCharacteristics.Battery;
